@@ -3,9 +3,13 @@ package api
 import (
     "encoding/json"
     "net/http"
+    //"strconv"
+    //"time"
 
     "github.com/romana/rlog"
 )
+
+//type JavaTime time.Time
 
 func GetJson(url string, respType interface{}) error {
     return httpJsonResp("GET", url, respType)
@@ -47,3 +51,18 @@ func decodeJson(resp *http.Response, respType interface{}) error {
     // Use json.Decode for reading streams of JSON data
     return json.NewDecoder(resp.Body).Decode(&respType)
 }
+
+/*
+func (j *JavaTime) UnmarshalJSON(data []byte) error {
+    millis, err := strconv.ParseInt(string(data), 10, 64)
+    if err != nil {
+        return err
+    }
+    *j = JavaTime(time.Unix(0, millis * int64(time.Millisecond)))
+    return nil
+}
+
+func (b JavaTime) String() string {
+    return fmt.Sprintf("%b", b)
+}
+*/

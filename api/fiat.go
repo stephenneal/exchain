@@ -1,4 +1,4 @@
-package fiat
+package api
 
 import (
 	"encoding/json"
@@ -54,16 +54,16 @@ func GetRates() {
 	}
 
 	// Everything accessible in struct now
-	rlog.Info("\n==== Currency Rates ====\n")
+	rlog.Debug("==== Currency Rates ====\n")
 
-	rlog.Info("Base: \t", rates.Base)
-	rlog.Info("Date: \t", rates.Date)
-	rlog.Info("USD:  \t", rates.Currencies.USD)
-	rlog.Info("AUD:  \t", rates.Currencies.AUD)
-	rlog.Info("CAD:  \t", rates.Currencies.CAD)
-	rlog.Info("CHF:  \t", rates.Currencies.CHF)
-	rlog.Info("EUR:  \t", rates.Currencies.EUR)
-	rlog.Info("RUB:  \t", rates.Currencies.RUB)
-	rlog.Info("JPY:  \t", rates.Currencies.JPY)
-	rlog.Info("NZD:  \t", rates.Currencies.NZD)
+	rlog.Debug("Base: \t", rates.Base)
+	rlog.Debug("Date: \t", rates.Date)
+	rlog.Debug("USD:  \t", rates.Currencies.USD)
+	rlog.Debug("AUD:  \t", rates.Currencies.AUD)
+	rlog.Debug("CAD:  \t", rates.Currencies.CAD)
+	rlog.Debug("CHF:  \t", rates.Currencies.CHF)
+	rlog.Debug("EUR:  \t", rates.Currencies.EUR)
+	rlog.Debug("RUB:  \t", rates.Currencies.RUB)
+	rlog.Debug("JPY:  \t", rates.Currencies.JPY)
+	rlog.Debug("NZD:  \t", rates.Currencies.NZD)
 }
