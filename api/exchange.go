@@ -36,6 +36,10 @@ const (
     TOK_ETH  = "ETH"
     TOK_USDT = "USDT"
 
+    BTC_AUD  = TOK_BTC + "/" + FIAT_AUD
+    BTC_USD  = TOK_BTC + "/" + FIAT_USD
+    BTC_USDT = TOK_BTC + "/" + TOK_USDT
+
     ETH_AUD  = TOK_ETH + "/" + FIAT_AUD
     ETH_BTC  = TOK_ETH + "/" + TOK_BTC
     ETH_USD  = TOK_ETH + "/" + FIAT_USD
@@ -49,15 +53,30 @@ var (
     coinbase = coinbaseService{}
 
     exByPairs = map[string][]Exchange {
+        BTC_AUD : { btcm, coinbase },
+        BTC_USD : { bitstamp, coinbase },
+        BTC_USDT: { binance },
         ETH_AUD : { btcm, coinbase },
         ETH_BTC : { binance },
         ETH_USD : { bitstamp, coinbase },
-        ETH_USDT : { binance },
+        ETH_USDT: { binance },
     }
+    allPairs = make([]string, len(exByPairs))
 
     fiatRates   = cache.New(1*time.Minute, 2*time.Minute)
     tickerCache = cache.New(10*time.Second, 1*time.Minute)
 )
+
+func GetAllPairs() []string {
+    i := 0
+    if (allPairs[i] == "") {
+        for k := range exByPairs {
+            allPairs[i] = k
+            i++
+        }
+    }
+    return allPairs
+}
 
 // Get ticker for pair from each exchange
 func RefreshTicker(pair string) {
