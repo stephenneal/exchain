@@ -23,34 +23,32 @@ type Rates struct {
 	} `json:"rates"`
 }
 
-var (
-	current  string
-	err      error
-	rates    Rates
-	response *http.Response
-	body     []byte
-)
-
-func GetRates() {
-	current = "USD"
+func GetFiatRates(base string) (error, Rates) {
+	var err      error
+	var rates    Rates
+	var response *http.Response
+	var body     []byte
 
 	// Use api.fixer.io to get a JSON response
-	response, err = http.Get("http://api.fixer.io/latest?base=" + current)
+	response, err = http.Get("http://api.fixer.io/latest?base=" + base)
 	if err != nil {
-		rlog.Error(err)
+		//rlog.Error(err)
+	    return err, rates
 	}
 	defer response.Body.Close()
 
 	// Read the data into a byte slice(string)
 	body, err = ioutil.ReadAll(response.Body)
 	if err != nil {
-		rlog.Error(err)
+		//rlog.Error(err)
+	    return err, rates
 	}
 
 	// Unmarshal the JSON byte slice to a predefined struct
 	err = json.Unmarshal(body, &rates)
 	if err != nil {
-		rlog.Error(err)
+		//rlog.Error(err)
+	    return err, rates
 	}
 
 	// Everything accessible in struct now
@@ -66,4 +64,5 @@ func GetRates() {
 	rlog.Debug("RUB:  \t", rates.Currencies.RUB)
 	rlog.Debug("JPY:  \t", rates.Currencies.JPY)
 	rlog.Debug("NZD:  \t", rates.Currencies.NZD)
+	return err, rates
 }

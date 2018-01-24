@@ -1,9 +1,10 @@
 package api
 
 import (
+    "errors"
+    "fmt"
     "strconv"
     "strings"
-    "time"
 
     "github.com/romana/rlog"
 )
@@ -20,8 +21,6 @@ type bitstampTicker struct {
     Low       string `json:"low"`
     Ask       string `json:"ask"`
     Open      string `json:"open"`
-    errors    int
-    lastMod   time.Time
 }
 
 type tradingPair []struct {
@@ -34,56 +33,27 @@ type tradingPair []struct {
     Description     string `json:"description"`
 }
 
-const (
-    TICKER_URL = "https://www.bitstamp.net/api/v2/ticker/"
-    TRADING_PAIRS_URL = "https://www.bitstamp.net/api/v2/trading-pairs-info/"
-)
-
-var (
-    tickerMap = make(map[string]bitstampTicker)
-)
-
 func (s bitstampService) name() string {
     return "Bitstamp"
 }
 
-func (s bitstampService) defaultFiat() string {
-    return "USD"
-}
-
-func (s bitstampService) getTicker(pair string) Ticker {
+func (s bitstampService) getTicker(pair string) (error, Ticker) {
     var response bitstampTicker
-    var ok bool
-    if response, ok = tickerMap[pair]; ok {
-        elapsed := int64(time.Now().Sub(response.LastModified()) / time.Millisecond)
-        rlog.Infof("elapsed = %d", elapsed)
-        if (elapsed < 2000) {
-            rlog.Infof("%s ticker cached (%s); lastMod=%s", s.name(), pair, response.LastModified().String())
-            return response
-        }
-    }
-
-    p := strings.ToLower(strings.Replace(pair, "/", "", -1))
-    if err := GetJson(TICKER_URL + p, &response); err != nil {
-        rlog.Error(err)
-        response.errors = response.errors + 1
-        rlog.Errorf("%s (%s); failed. Using cached if it exists", s.name(), pair, response.LastModified().String())
+    urlP := strings.ToLower(strings.Replace(pair, "/", "", -1))
+    err := GetJson("https://www.bitstamp.net/api/v2/ticker/" + urlP, &response)
+    if err != nil {
+        return err, nil
     } else if (response.Last == "") {
-        rlog.Errorf("%s (%s); not found", s.name(), pair)
-    } else {
-        response.errors = 0
-        response.lastMod = time.Now()
-        tickerMap[pair] = response
-        rlog.Infof("%s (%s); Last=%f; High=%s; Low=%s; Time=%s", s.name(), pair, response.LastPrice(), response.High, response.Low, response.LastModified().String())
+        return errors.New(fmt.Sprintf("%s (%s); not found", s.name(), pair)), nil
     }
-
-    return response
+    return nil, response
 }
 
+// FIXME add this to the Exchange API
 func GetTradingPairs() {
     var response tradingPair
 
-    if err := GetJson(TRADING_PAIRS_URL, &response); err != nil {
+    if err := GetJson("https://www.bitstamp.net/api/v2/trading-pairs-info/", &response); err != nil {
         rlog.Error(err)
     } else {
         for _, elem := range response {
@@ -103,24 +73,3 @@ func (t bitstampTicker) LastPrice() float64 {
     }
     return fPrice
 }
-
-func (t bitstampTicker) LastModified() time.Time {
-    return t.lastMod
-}
-
-func (t bitstampTicker) ErrorCount() int {
-    return t.errors
-}
-
-/*
-func tsToTime(ms string) time.Time {
-    sInt, err := strconv.ParseInt(ms, 10, 64)
-    if err != nil {
-        rlog.Error(err)
-        return time.Time{}
-    }
-
-    msInt := sInt * 1000
-    return time.Unix(0, msInt*int64(time.Millisecond))
-}
-*/
