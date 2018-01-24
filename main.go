@@ -14,7 +14,7 @@ func main() {
             api.RefreshTicker(p)
         }
         api.Derive(api.FIAT_USD, api.FIAT_AUD)
-        api.GetTickers()
+        api.PrintTickers()
     //    }
     //}()
     //time.Sleep(time.Millisecond * 3000)

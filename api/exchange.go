@@ -125,8 +125,8 @@ func RefreshTicker(pair string) {
     }
 }
 
-func GetTickers() {
-    // To store the keys in slice in sorted order
+func PrintTickers() {
+    // Sort the keys
     var keys []string
     items := tickerCache.Items()
     for k := range items {
@@ -134,10 +134,25 @@ func GetTickers() {
     }
     sort.Strings(keys)
 
-    rlog.Infof("\n")
+    var prevPair string
     for _, k := range keys {
         cached := items[k].Object.(CacheableTicker)
-        rlog.Infof(cached.String())
+        // Print a new line in between pairs
+        var customStr string
+        if (prevPair != cached.pair) {
+            // Put USDT with USD but demarcate
+            if (strings.HasSuffix(prevPair, FIAT_USD) && strings.HasSuffix(cached.pair, TOK_USDT)) {
+                customStr = " (" + TOK_USDT + ")"
+            } else {
+                prevPair = cached.pair
+                rlog.Infof("\n")
+                rlog.Infof("---  %s ---", cached.pair)
+            }
+        }
+        if (cached.exchRate > 0) {
+            customStr = fmt.Sprintf(" (exch=%f)", cached.exchRate)
+        }
+        rlog.Infof("%s: %f%s", cached.exchange, cached.lastPrice, customStr)
     }
 }
 
