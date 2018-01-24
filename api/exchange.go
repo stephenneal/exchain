@@ -32,22 +32,27 @@ type CacheableTicker struct {
 const (
     FIAT_AUD = "AUD"
     FIAT_USD = "USD"
-    TOK_BTC = "BTC"
-    TOK_ETH = "ETH"
+    TOK_BTC  = "BTC"
+    TOK_ETH  = "ETH"
+    TOK_USDT = "USDT"
 
-    ETH_AUD = TOK_ETH + "/" + FIAT_AUD
-    ETH_USD = TOK_ETH + "/" + FIAT_USD
-    ETH_BTC = TOK_ETH + "/" + TOK_BTC
+    ETH_AUD  = TOK_ETH + "/" + FIAT_AUD
+    ETH_BTC  = TOK_ETH + "/" + TOK_BTC
+    ETH_USD  = TOK_ETH + "/" + FIAT_USD
+    ETH_USDT = TOK_ETH + "/" + TOK_USDT
 )
 
 var (
+    binance = binanceService{}
     bitstamp = bitstampService{}
     btcm = btcmService{}
-    binance = binanceService{}
+    coinbase = coinbaseService{}
+
     exByPairs = map[string][]Exchange {
-        ETH_AUD : { btcm },
-        ETH_USD : { bitstamp },
+        ETH_AUD : { btcm, coinbase },
         ETH_BTC : { binance },
+        ETH_USD : { bitstamp, coinbase },
+        ETH_USDT : { binance },
     }
 
     fiatRates   = cache.New(1*time.Minute, 2*time.Minute)
@@ -83,6 +88,8 @@ func RefreshTicker(pair string) {
                 //if (cached != nil) {
                 //    rlog.Errorf("%s (%s): use cached instance", ex.name(), pair)
                 //}
+            } else if (ticker.LastPrice() == 0) {
+                rlog.Errorf("%s (%s); not found", ex.name(), pair)
             } else {
                 rlog.Debugf("%s (%s): %f", ex.name(), pair, ticker.LastPrice())
                 tickerCache.Set(cacheKey, CacheableTicker{
@@ -112,7 +119,6 @@ func GetTickers() {
     for _, k := range keys {
         cached := items[k].Object.(CacheableTicker)
         rlog.Infof(cached.String())
-        //rlog.Infof("%s (%s): %f", cached.exchange, cached.pair, cached.ticker.LastPrice())
     }
 }
 

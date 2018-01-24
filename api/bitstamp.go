@@ -1,9 +1,6 @@
 package api
 
 import (
-    "errors"
-    "fmt"
-    "strconv"
     "strings"
 
     "github.com/romana/rlog"
@@ -13,7 +10,7 @@ type bitstampService struct{}
 
 type bitstampTicker struct {
     High      string `json:"high"`
-    Last      string `json:"last"`
+    Last      float64 `json:"last,string"`
     Timestamp string `json:"timestamp"`
     Bid       string `json:"bid"`
     Vwap      string `json:"vwap"`
@@ -41,12 +38,7 @@ func (s bitstampService) getTicker(pair string) (error, Ticker) {
     var response bitstampTicker
     urlP := strings.ToLower(strings.Replace(pair, "/", "", -1))
     err := GetJson("https://www.bitstamp.net/api/v2/ticker/" + urlP, &response)
-    if err != nil {
-        return err, nil
-    } else if (response.Last == "") {
-        return errors.New(fmt.Sprintf("%s (%s); not found", s.name(), pair)), nil
-    }
-    return nil, response
+    return err, response
 }
 
 // FIXME add this to the Exchange API
@@ -63,13 +55,5 @@ func GetTradingPairs() {
 }
 
 func (t bitstampTicker) LastPrice() float64 {
-    if (t.Last == "") {
-        return -1
-    }
-    fPrice, err := strconv.ParseFloat(t.Last, 64)
-    if err != nil {
-        rlog.Error(err)
-        return -1
-    }
-    return fPrice
+    return t.Last
 }

@@ -1,11 +1,5 @@
 package api
 
-import (
-    "errors"
-    "fmt"
-    //"github.com/romana/rlog"
-)
-
 type btcmService struct{}
 
 type btcmTicker struct {
@@ -25,12 +19,7 @@ func (s btcmService) name() string {
 func (s btcmService) getTicker(pair string) (error, Ticker) {
     var response btcmTicker
     err := GetJson("https://api.btcmarkets.net/market/" + pair + "/tick", &response)
-    if err != nil {
-        return err, nil
-    } else if (response.Last == 0) {
-        return errors.New(fmt.Sprintf("%s (%s); not found", s.name(), pair)), nil
-    }
-    return nil, response
+    return err, response
 }
 
 func (t btcmTicker) LastPrice() float64 {
