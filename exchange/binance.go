@@ -4,6 +4,18 @@ import (
     "strings"
 )
 
+const (
+	binanceName = "Binance"
+)
+
+var (
+    binancePairs = []string{
+        BTC_USDT,
+        ETH_BTC,
+        ETH_USDT,
+    }
+)
+
 type binanceService struct{}
 
 type binanceTicker struct {
@@ -11,8 +23,12 @@ type binanceTicker struct {
     Last      float64 `json:"price,string"`
 }
 
-func (s binanceService) name() string {
-    return "Binance"
+func (s binanceService) getPairs() []string {
+    return binancePairs
+}
+
+func (s binanceService) exchangeName() string {
+    return binanceName
 }
 
 func (s binanceService) getTicker(pair string) (error, Ticker) {

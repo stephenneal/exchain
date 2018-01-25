@@ -4,6 +4,19 @@ import (
     "strings"
 )
 
+const (
+    coinbaseName = "Coinbase"
+)
+
+var (
+    coinbasePairs = []string{
+        BTC_AUD,
+        BTC_USD,
+        ETH_AUD,
+        ETH_USD,
+    }
+)
+
 type coinbaseService struct{}
 
 type coinbaseTicker struct {
@@ -14,8 +27,12 @@ type coinbaseTicker struct {
     } `json:"data"`
 }
 
-func (s coinbaseService) name() string {
-    return "Coinbase"
+func (s coinbaseService) exchangeName() string {
+    return coinbaseName
+}
+
+func (s coinbaseService) getPairs() []string {
+    return coinbasePairs
 }
 
 func (s coinbaseService) getTicker(pair string) (error, Ticker) {

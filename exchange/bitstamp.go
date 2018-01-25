@@ -6,6 +6,17 @@ import (
     "github.com/romana/rlog"
 )
 
+const (
+    bitstampName = "Bitstamp"
+)
+
+var (
+    bitstampPairs = []string{
+        BTC_USD,
+        ETH_USD,
+    }
+)
+
 type bitstampService struct{}
 
 type bitstampTicker struct {
@@ -30,8 +41,12 @@ type tradingPair []struct {
     Description     string `json:"description"`
 }
 
-func (s bitstampService) name() string {
-    return "Bitstamp"
+func (s bitstampService) exchangeName() string {
+    return bitstampName
+}
+
+func (s bitstampService) getPairs() []string {
+    return bitstampPairs
 }
 
 func (s bitstampService) getTicker(pair string) (error, Ticker) {

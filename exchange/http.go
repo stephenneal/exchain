@@ -9,8 +9,6 @@ import (
     "github.com/romana/rlog"
 )
 
-//type JavaTime time.Time
-
 func GetJson(url string, respType interface{}) error {
     return httpJsonResp("GET", url, respType)
 }

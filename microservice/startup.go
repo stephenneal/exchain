@@ -18,14 +18,14 @@ func Start(listen *string) {
 
 	fieldKeys := []string{"method", "error"}
 	requestCount := kitprometheus.NewCounterFrom(stdprometheus.CounterOpts{
-		Namespace: "my_group",
+		Namespace: "exchange_group",
 		Subsystem: "ticker_service",
 		Name:      "request_count",
 		Help:      "Number of requests received.",
 	}, fieldKeys)
 	requestLatency := kitprometheus.NewSummaryFrom(stdprometheus.SummaryOpts{
-		Namespace: "ticker_group",
-		Subsystem: "string_service",
+		Namespace: "exchange_group",
+		Subsystem: "ticker_service",
 		Name:      "request_latency_microseconds",
 		Help:      "Total duration of requests in microseconds.",
 	}, fieldKeys)
@@ -35,7 +35,6 @@ func Start(listen *string) {
 	ticker := time.NewTicker(time.Millisecond * 30000)
     go func() {
        for range ticker.C {
-       	    logger.Log("refreshTickers", "now")
 			tickerSvc.RefreshTickers()
        }
     }()

@@ -1,5 +1,16 @@
 package exchange
 
+const (
+    btcmName = "BTCMarkets"
+)
+
+var (
+    btcmPairs = []string{
+        BTC_AUD,
+        ETH_AUD,
+    }
+)
+
 type btcmService struct{}
 
 type btcmTicker struct {
@@ -12,8 +23,12 @@ type btcmTicker struct {
 	Volume24H  float64 `json:"volume24h"`
 }
 
-func (s btcmService) name() string {
-    return "BTC Markets"
+func (s btcmService) exchangeName() string {
+    return btcmName
+}
+
+func (s btcmService) getPairs() []string {
+    return btcmPairs
 }
 
 func (s btcmService) getTicker(pair string) (error, Ticker) {

@@ -17,7 +17,7 @@ type Ticker interface {
 }
 
 type Exchange interface {
-    name()            string
+    exchangeName() string
     getTicker(string) (error, Ticker)
 }
 
@@ -67,8 +67,8 @@ var (
     }
     allPairs = make([]string, len(exByPairs))
 
-    fiatRates   = cache.New(cache.NoExpiration, cache.NoExpiration)
-    tickerCache = cache.New(cache.NoExpiration, cache.NoExpiration)
+    fiatRates   = cache.New(5*time.Minute, 10*time.Minute)
+    tickerCache = cache.New(5*time.Minute, 10*time.Minute)
 )
 
 func GetAllPairs() []string {
@@ -97,33 +97,33 @@ func RefreshTicker(pair string) {
     if exArr, ok = exByPairs[pair]; ok {
         for _, ex := range exArr {
             // Check the cache
-            cacheKey := pair + "-" + ex.name();
+            cacheKey := pair + "-" + ex.exchangeName();
             var cached CacheableTicker
             e, found := tickerCache.Get(cacheKey)
             if found {
                 cached = e.(CacheableTicker)
                 elapsed := int64(time.Now().Sub(cached.lastMod) / time.Millisecond)
                 if (elapsed < 10000) {
-                    level.Debug(logger).Log("method", "RefreshTicker", "pair", pair, "exchange", ex.name(), "cache", "true")
+                    level.Debug(logger).Log("method", "RefreshTicker", "pair", pair, "exchange", ex.exchangeName(), "cache", "true")
                     return
                 }
             }
 
             // Get / update the ticker
-            level.Debug(logger).Log("method", "RefreshTicker", "pair", pair, "exchange", ex.name(), "cache", "false")
+            level.Debug(logger).Log("method", "RefreshTicker", "pair", pair, "exchange", ex.exchangeName(), "cache", "false")
             err, ticker := ex.getTicker(pair)
             if err != nil {
-                level.Error(logger).Log("method", "RefreshTicker", "pair", pair, "exchange", ex.name(), "message", err)
+                level.Error(logger).Log("method", "RefreshTicker", "pair", pair, "exchange", ex.exchangeName(), "message", err)
                 // If there is an expired cache entry, just use that
                 //if (cached != nil) {
-                //    rlog.Errorf("%s (%s): use cached instance", ex.name(), pair)
+                //    rlog.Errorf("%s (%s): use cached instance", ex.exchangeName(), pair)
                 //}
             } else if (ticker.LastPrice() == 0) {
-                level.Error(logger).Log("method", "RefreshTicker", "pair", pair, "exchange", ex.name(), "message", "empty")
+                level.Error(logger).Log("method", "RefreshTicker", "pair", pair, "exchange", ex.exchangeName(), "message", "empty")
             } else {
-                level.Debug(logger).Log("method", "RefreshTicker", "pair", pair, "exchange", ex.name(), "lastPrice", ticker.LastPrice())
+                level.Debug(logger).Log("method", "RefreshTicker", "pair", pair, "exchange", ex.exchangeName(), "lastPrice", ticker.LastPrice())
                 tickerCache.Set(cacheKey, CacheableTicker{
-                    exchange: ex.name(),
+                    exchange: ex.exchangeName(),
                     pair: pair,
                     exchRate: 0,
                     lastPrice: ticker.LastPrice(),
@@ -262,10 +262,14 @@ func getFiatRate(base string, alt string) (error, float64) {
     return err, rate
 }
 
+func (t CacheableTicker) LastPrice() float64 {
+    return t.lastPrice
+}
+
 func (t CacheableTicker) String() string {
     var rateStr string
     if (t.exchRate > 0) {
         rateStr = fmt.Sprintf("; exch. rate = %f", t.exchRate)
     }
     return fmt.Sprintf("%s (%s); %f%s", t.pair, t.exchange, t.lastPrice, rateStr)
- }
+}
