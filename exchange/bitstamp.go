@@ -6,17 +6,6 @@ import (
     "github.com/romana/rlog"
 )
 
-const (
-    bitstampName = "Bitstamp"
-)
-
-var (
-    bitstampPairs = []string{
-        BTC_USD,
-        ETH_USD,
-    }
-)
-
 type bitstampService struct{}
 
 type bitstampTicker struct {
@@ -41,19 +30,16 @@ type tradingPair []struct {
     Description     string `json:"description"`
 }
 
-func (s bitstampService) exchangeName() string {
-    return bitstampName
-}
-
-func (s bitstampService) getPairs() []string {
-    return bitstampPairs
-}
-
-func (s bitstampService) getTicker(pair string) (error, Ticker) {
-    var response bitstampTicker
+func (s bitstampService) getTicker(pair string) (error, SimpleTicker) {
+    var custom bitstampTicker
     urlP := strings.ToLower(strings.Replace(pair, "/", "", -1))
-    err := GetJson("https://www.bitstamp.net/api/v2/ticker/" + urlP, &response)
-    return err, response
+    err := GetJson("https://www.bitstamp.net/api/v2/ticker/" + urlP, &custom)
+
+    var r SimpleTicker
+    if (err == nil) {
+        r = SimpleTicker { custom.Last }
+    }
+    return err, r
 }
 
 // FIXME add this to the Exchange API
@@ -67,8 +53,4 @@ func GetTradingPairs() {
             rlog.Info(elem.Name)
         }
     }
-}
-
-func (t bitstampTicker) LastPrice() float64 {
-    return t.Last
 }

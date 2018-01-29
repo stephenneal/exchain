@@ -12,20 +12,17 @@ import (
     "github.com/go-kit/kit/log/level"
 )
 
-type Ticker interface {
-    LastPrice()    float64
-}
-
-type Exchange interface {
-    exchangeName() string
-    getTicker(string) (error, Ticker)
+type Exchange struct {
+    name string
+    tradingPairs []string
+    service ExchangeService
 }
 
 type CacheableTicker struct {
     exchange   string
     pair       string
     lastPrice  float64
-    ticker     Ticker
+    ticker     *SimpleTicker
     exchRate   float64
     errorCount int
     lastMod    time.Time
@@ -46,15 +43,40 @@ const (
     ETH_BTC  = TOK_ETH + "/" + TOK_BTC
     ETH_USD  = TOK_ETH + "/" + FIAT_USD
     ETH_USDT = TOK_ETH + "/" + TOK_USDT
+
+    binanceName = "Binance"
+    bitstampName = "Bitstamp"
+    btcmName = "BTCMarkets"
+    coinbaseName = "Coinbase"
 )
 
 var (
+    btcmPairs = []string{
+        BTC_AUD,
+        ETH_AUD,
+    }
+    binancePairs = []string{
+        BTC_USDT,
+        ETH_BTC,
+        ETH_USDT,
+    }
+    bitstampPairs = []string{
+        BTC_USD,
+        ETH_USD,
+    }
+    coinbasePairs = []string{
+        BTC_AUD,
+        BTC_USD,
+        ETH_AUD,
+        ETH_USD,
+    }
+
     logger = level.NewFilter(log.NewLogfmtLogger(os.Stderr), level.AllowInfo())
 
-    binance = binanceService{}
-    bitstamp = bitstampService{}
-    btcm = btcmService{}
-    coinbase = coinbaseService{}
+    binance = Exchange {binanceName, binancePairs, binanceService{}}
+    bitstamp = Exchange {bitstampName, bitstampPairs, bitstampService{}}
+    btcm = Exchange {btcmName, btcmPairs, btcmService{}}
+    coinbase = Exchange {coinbaseName, coinbasePairs, coinbaseService{}}
 
     exByPairs = map[string][]Exchange {
         BTC_AUD : { btcm, coinbase },
@@ -97,37 +119,37 @@ func RefreshTicker(pair string) {
     if exArr, ok = exByPairs[pair]; ok {
         for _, ex := range exArr {
             // Check the cache
-            cacheKey := pair + "-" + ex.exchangeName();
+            cacheKey := pair + "-" + ex.name;
             var cached CacheableTicker
             e, found := tickerCache.Get(cacheKey)
             if found {
                 cached = e.(CacheableTicker)
                 elapsed := int64(time.Now().Sub(cached.lastMod) / time.Millisecond)
                 if (elapsed < 10000) {
-                    level.Debug(logger).Log("method", "RefreshTicker", "pair", pair, "exchange", ex.exchangeName(), "cache", "true")
+                    level.Debug(logger).Log("method", "RefreshTicker", "pair", pair, "exchange", ex.name, "cache", "true")
                     return
                 }
             }
 
             // Get / update the ticker
-            level.Debug(logger).Log("method", "RefreshTicker", "pair", pair, "exchange", ex.exchangeName(), "cache", "false")
-            err, ticker := ex.getTicker(pair)
+            level.Debug(logger).Log("method", "RefreshTicker", "pair", pair, "exchange", ex.name, "cache", "false")
+            err, ticker := ex.service.getTicker(pair)
             if err != nil {
-                level.Error(logger).Log("method", "RefreshTicker", "pair", pair, "exchange", ex.exchangeName(), "message", err)
+                level.Error(logger).Log("method", "RefreshTicker", "pair", pair, "exchange", ex.name, "message", err)
                 // If there is an expired cache entry, just use that
                 //if (cached != nil) {
-                //    rlog.Errorf("%s (%s): use cached instance", ex.exchangeName(), pair)
+                //    rlog.Errorf("%s (%s): use cached instance", ex.name, pair)
                 //}
-            } else if (ticker.LastPrice() == 0) {
-                level.Error(logger).Log("method", "RefreshTicker", "pair", pair, "exchange", ex.exchangeName(), "message", "empty")
+            } else if (ticker.lastPrice == 0) {
+                level.Error(logger).Log("method", "RefreshTicker", "pair", pair, "exchange", ex.name, "message", "empty")
             } else {
-                level.Debug(logger).Log("method", "RefreshTicker", "pair", pair, "exchange", ex.exchangeName(), "lastPrice", ticker.LastPrice())
+                level.Debug(logger).Log("method", "RefreshTicker", "pair", pair, "exchange", ex.name, "lastPrice", ticker.lastPrice)
                 tickerCache.Set(cacheKey, CacheableTicker{
-                    exchange: ex.exchangeName(),
+                    exchange: ex.name,
                     pair: pair,
                     exchRate: 0,
-                    lastPrice: ticker.LastPrice(),
-                    ticker: ticker,
+                    lastPrice: ticker.lastPrice,
+                    ticker: &ticker,
                     errorCount: 0,
                     lastMod: time.Now(),
                 }, cache.DefaultExpiration)
@@ -223,7 +245,7 @@ func Derive(base string, alt string) {
             continue
         }
 
-        price := cached.ticker.LastPrice() * rate
+        price := cached.ticker.lastPrice * rate
         tickerCache.Set(newCacheKey, CacheableTicker{
             exchange: cached.exchange,
             pair: newPair,
@@ -260,10 +282,6 @@ func getFiatRate(base string, alt string) (error, float64) {
         rate = -1
     }
     return err, rate
-}
-
-func (t CacheableTicker) LastPrice() float64 {
-    return t.lastPrice
 }
 
 func (t CacheableTicker) String() string {

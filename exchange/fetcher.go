@@ -2,46 +2,60 @@ package exchange
 
 import (
     "fmt"
+    "errors"
     "time"
 
     "github.com/patrickmn/go-cache"
     "github.com/go-kit/kit/log/level"
 )
 
+type ExchangeService interface {
+    getTicker(string) (error, SimpleTicker)
+}
+
+type SimpleTicker struct {
+    lastPrice  float64
+}
+
 type Ticker2 struct {
     exchange   string
     pair       string
-    lastPrice  float64
-    ticker     Ticker
+    ticker     *SimpleTicker
     exchRate   float64
     errorCount int
     lastMod    time.Time
 }
 
-type TickerFetcher interface {
+type TickerProxy interface {
     exchangeName() string
     getPairs() []string
     getTicker(pair string) (err error, ticker Ticker2)
 }
 
 // Fetcher implementations
-type cachingFetcher struct {
+type cachingTicker struct {
     tickerCache *cache.Cache
-    next TickerFetcher
+    next TickerProxy
+}
+
+type exchangeTicker struct {
+    name string
+    tradingPairs []string
+    service ExchangeService
 }
 
 var (
-    allExFetcher = []TickerFetcher{
-        cachingFetcher{ cache.New(5*time.Minute, 10*time.Minute), binanceService{} },
-        cachingFetcher{ cache.New(5*time.Minute, 10*time.Minute), bitstampService{} },
-        cachingFetcher{ cache.New(5*time.Minute, 10*time.Minute), btcmService{} },
-        cachingFetcher{ cache.New(5*time.Minute, 10*time.Minute), coinbaseService{} },
+    allExFetcher = []TickerProxy{
+        cachingTicker{ cache.New(5*time.Minute, 10*time.Minute), &exchangeTicker{binanceName, binancePairs, binanceService{}} },
+        cachingTicker{ cache.New(5*time.Minute, 10*time.Minute), &exchangeTicker{bitstampName, bitstampPairs, bitstampService{}} },
+        cachingTicker{ cache.New(5*time.Minute, 10*time.Minute), &exchangeTicker{btcmName, btcmPairs, btcmService{}} },
+        cachingTicker{ cache.New(5*time.Minute, 10*time.Minute), &exchangeTicker{coinbaseName, coinbasePairs, coinbaseService{}} },
     }
 )
 
 func GetAllTickers() map[string][]Ticker2 {
     // TODO call exchanges concurrently
-    tickers := make(map[string][]Ticker)
+    tickers := make(map[string][]Ticker2)
     for _, f := range allExFetcher {
         for _, p := range f.getPairs() {
             err, t := f.getTicker(p)
@@ -81,34 +95,63 @@ func GetTicker(pair string) (err error, ticker []Ticker2) {
     return nil, tickers
 }
 
-func (f cachingFetcher) exchangeName() string {
+func (f cachingTicker) exchangeName() string {
     return f.next.exchangeName()
 }
 
-func (f cachingFetcher) getPairs() []string {
+func (f cachingTicker) getPairs() []string {
     return f.next.getPairs()
 }
 
-func (f cachingFetcher) getTicker(pair string) (err error, ticker Ticker2) {
+func (f cachingTicker) getTicker(pair string) (error, Ticker2) {
     c, found := tickerCache.Get(pair)
     var t2 Ticker2
     if found {
         t2 := c.(Ticker2)
         return nil, t2
     }
-    err, t := f.next.getTicker(pair)
+    var err error
+    err, t2 = f.next.getTicker(pair)
 
-    if (err != nil || t.LastPrice() <= 0) {
+    if (err == nil) {
+        tickerCache.Set(pair, t2, cache.DefaultExpiration)
+    }
+    return err, t2
+}
+
+func (f exchangeTicker) exchangeName() string {
+    return f.name
+}
+
+func (f exchangeTicker) getPairs() []string {
+    return f.tradingPairs
+}
+
+func (f exchangeTicker) getTicker(pair string) (error, Ticker2) {
+    var t2 Ticker2
+    err, t := f.service.getTicker(pair)
+
+    if (err != nil) {
         return err, t2
     }
+    if (t.lastPrice <= 0) {
+        return errors.New("pair not found"), t2
+    }
     t2 = Ticker2{
-        exchange: f.exchangeName(),
+        exchange: f.name,
         pair: pair,
         exchRate: 0,
-        lastPrice: t.LastPrice(),
-        ticker: t,
+        ticker: &t,
         errorCount: 0,
         lastMod: time.Now(),
-    }, cache.DefaultExpiration)
+    }
     return err, t2
+}
+
+func (t Ticker2) String() string {
+    var rateStr string
+    if (t.exchRate > 0) {
+        rateStr = fmt.Sprintf("; exch. rate = %f", t.exchRate)
+    }
+    return fmt.Sprintf("%s (%s); %f%s", t.pair, t.exchange, t.ticker.lastPrice, rateStr)
 }
