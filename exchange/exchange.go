@@ -1,31 +1,27 @@
 package exchange
 
 import (
+    "errors"
     "fmt"
     "os"
     "sort"
-    "strings"
+    //"strings"
     "time"
 
-    "github.com/patrickmn/go-cache"
+    "github.com/stephenneal/exchain/data"
+
     "github.com/go-kit/kit/log"
     "github.com/go-kit/kit/log/level"
+    "github.com/patrickmn/go-cache"
 )
 
-type Exchange struct {
-    name string
-    tradingPairs []string
-    service ExchangeService
+type ExchangeService interface {
+    getLastPrice(string) (error, float64)
 }
 
-type CacheableTicker struct {
-    exchange   string
-    pair       string
-    lastPrice  float64
-    ticker     *SimpleTicker
-    exchRate   float64
-    errorCount int
-    lastMod    time.Time
+type exchange struct {
+    name string
+    service ExchangeService
 }
 
 const (
@@ -43,42 +39,17 @@ const (
     ETH_BTC  = TOK_ETH + "/" + TOK_BTC
     ETH_USD  = TOK_ETH + "/" + FIAT_USD
     ETH_USDT = TOK_ETH + "/" + TOK_USDT
-
-    binanceName = "Binance"
-    bitstampName = "Bitstamp"
-    btcmName = "BTCMarkets"
-    coinbaseName = "Coinbase"
 )
 
 var (
-    btcmPairs = []string{
-        BTC_AUD,
-        ETH_AUD,
-    }
-    binancePairs = []string{
-        BTC_USDT,
-        ETH_BTC,
-        ETH_USDT,
-    }
-    bitstampPairs = []string{
-        BTC_USD,
-        ETH_USD,
-    }
-    coinbasePairs = []string{
-        BTC_AUD,
-        BTC_USD,
-        ETH_AUD,
-        ETH_USD,
-    }
-
     logger = level.NewFilter(log.NewLogfmtLogger(os.Stderr), level.AllowInfo())
 
-    binance = Exchange {binanceName, binancePairs, binanceService{}}
-    bitstamp = Exchange {bitstampName, bitstampPairs, bitstampService{}}
-    btcm = Exchange {btcmName, btcmPairs, btcmService{}}
-    coinbase = Exchange {coinbaseName, coinbasePairs, coinbaseService{}}
+    binance  = exchange {"Binance", binanceService{}}
+    bitstamp = exchange {"Bitstamp", bitstampService{}}
+    btcm     = exchange {"BTCMarkets", btcmService{}}
+    coinbase = exchange {"Coinbase", coinbaseService{}}
 
-    exByPairs = map[string][]Exchange {
+    exByPairs = map[string][]exchange {
         BTC_AUD : { btcm, coinbase },
         BTC_USD : { bitstamp, coinbase },
         BTC_USDT: { binance },
@@ -89,11 +60,10 @@ var (
     }
     allPairs = make([]string, len(exByPairs))
 
-    fiatRates   = cache.New(5*time.Minute, 10*time.Minute)
-    tickerCache = cache.New(5*time.Minute, 10*time.Minute)
+    fiatRates = cache.New(5*time.Minute, 10*time.Minute)
 )
 
-func GetAllPairs() []string {
+func AllPairs() []string {
     i := 0
     if (allPairs[i] == "") {
         for k := range exByPairs {
@@ -101,73 +71,51 @@ func GetAllPairs() []string {
             i++
         }
     }
+    sort.Strings(allPairs)
     return allPairs
 }
 
-func RefreshTickers() {
+func GetTickers() (err error, ticker []data.Ticker) {
+    // TODO call exchanges concurrently
+    var tickers []data.Ticker
+    for _, pair := range AllPairs() {
+        err, t := GetTicker(pair)
+        if (err != nil) {
+            level.Error(logger).Log("method", "GetTickers", "pair", pair, "err", err)
+            continue
+        }
+        tickers = append(tickers, t...)
+    }
+    level.Debug(logger).Log("method", "GetTickers", "tickers", fmt.Sprintf("%v", tickers))
+    return nil, tickers
+}
+
+func GetTicker(pair string) (err error, ticker []data.Ticker) {
+    // TODO call exchanges concurrently
+    var tickers []data.Ticker
+    if exArr, ok := exByPairs[pair]; ok {
+        for _, ex := range exArr {
+            err, t := ex.getTicker(pair)
+            if (err != nil) {
+                level.Error(logger).Log("method", "GetTicker", "pair", pair, "exchange", ex.name, "err", err)
+                continue
+            }
+            tickers = append(tickers, t)
+        }
+    }
+    level.Debug(logger).Log("method", "GetTicker", "pair", pair, "tickers", fmt.Sprintf("%v", tickers))
+    return nil, tickers
+}
+
+/*
+func refreshTickers() {
     for _, p := range GetAllPairs() {
         RefreshTicker(p)
     }
-    Derive(FIAT_USD, FIAT_AUD)
+    derive(FIAT_USD, FIAT_AUD)
 }
 
-// Get ticker for pair from each exchange
-func RefreshTicker(pair string) {
-    level.Debug(logger).Log("method", "RefreshTicker", "pair", pair)
-    var exArr []Exchange
-    var ok bool
-    if exArr, ok = exByPairs[pair]; ok {
-        for _, ex := range exArr {
-            // Check the cache
-            cacheKey := pair + "-" + ex.name;
-            var cached CacheableTicker
-            e, found := tickerCache.Get(cacheKey)
-            if found {
-                cached = e.(CacheableTicker)
-                elapsed := int64(time.Now().Sub(cached.lastMod) / time.Millisecond)
-                if (elapsed < 10000) {
-                    level.Debug(logger).Log("method", "RefreshTicker", "pair", pair, "exchange", ex.name, "cache", "true")
-                    return
-                }
-            }
-
-            // Get / update the ticker
-            level.Debug(logger).Log("method", "RefreshTicker", "pair", pair, "exchange", ex.name, "cache", "false")
-            err, ticker := ex.service.getTicker(pair)
-            if err != nil {
-                level.Error(logger).Log("method", "RefreshTicker", "pair", pair, "exchange", ex.name, "message", err)
-                // If there is an expired cache entry, just use that
-                //if (cached != nil) {
-                //    rlog.Errorf("%s (%s): use cached instance", ex.name, pair)
-                //}
-            } else if (ticker.lastPrice == 0) {
-                level.Error(logger).Log("method", "RefreshTicker", "pair", pair, "exchange", ex.name, "message", "empty")
-            } else {
-                level.Debug(logger).Log("method", "RefreshTicker", "pair", pair, "exchange", ex.name, "lastPrice", ticker.lastPrice)
-                tickerCache.Set(cacheKey, CacheableTicker{
-                    exchange: ex.name,
-                    pair: pair,
-                    exchRate: 0,
-                    lastPrice: ticker.lastPrice,
-                    ticker: &ticker,
-                    errorCount: 0,
-                    lastMod: time.Now(),
-                }, cache.DefaultExpiration)
-            }
-        }
-    }
-}
-
-func GetTickers() map[string][]CacheableTicker {
-    tickers := make(map[string][]CacheableTicker)
-    for _, v := range tickerCache.Items() {
-        cached := v.Object.(CacheableTicker)
-        tickers[cached.pair] = append(tickers[cached.pair], cached)
-    }
-    return tickers
-}
-
-func PrintTickers() {
+func printTickers() {
     // Sort the keys
     var keys []string
     items := tickerCache.Items()
@@ -178,27 +126,27 @@ func PrintTickers() {
 
     var prevPair string
     for _, k := range keys {
-        cached := items[k].Object.(CacheableTicker)
+        cached := items[k].Object.(data.Ticker)
         // Print a new line in between pairs
         var customStr string
-        if (prevPair != cached.pair) {
+        if (prevPair != cached.Pair) {
             // Put USDT with USD but demarcate
-            if (strings.HasSuffix(prevPair, FIAT_USD) && strings.HasSuffix(cached.pair, TOK_USDT)) {
+            if (strings.HasSuffix(prevPair, FIAT_USD) && strings.HasSuffix(cached.Pair, TOK_USDT)) {
                 customStr = " (" + TOK_USDT + ")"
             } else {
-                prevPair = cached.pair
-                logger.Log("PrintTickers", cached.pair)
+                prevPair = cached.Pair
+                logger.Log("PrintTickers", cached.Pair)
             }
         }
-        if (cached.exchRate > 0) {
-            customStr = fmt.Sprintf(" (exch=%f)", cached.exchRate)
+        if (cached.ExchRate > 0) {
+            customStr = fmt.Sprintf(" (exch=%f)", cached.ExchRate)
         }
-        logger.Log("exchange", cached.exchange, "lastPrice", cached.lastPrice, "extra", customStr)
+        logger.Log("exchange", cached.Exchange, "lastPrice", cached.LastPrice, "extra", customStr)
     }
 }
 
 // Derive tickers for currencies not supported by the exchange
-func Derive(base string, alt string) {
+func derive(base string, alt string) {
     err, baseToAltRate := getFiatRate(base, alt)
     if err != nil {
         level.Error(logger).Log("method", "Derive", "base", base, "alt", alt, "error", err)
@@ -219,8 +167,8 @@ func Derive(base string, alt string) {
     }
 
     for _, v := range tickerCache.Items() {
-        cached := v.Object.(CacheableTicker)
-        splitPair := strings.Split(cached.pair, "/")
+        cached := v.Object.(data.Ticker)
+        splitPair := strings.Split(cached.Pair, "/")
         fiat := splitPair[1]
 
         var other string
@@ -238,25 +186,25 @@ func Derive(base string, alt string) {
 
         // Is the other pair cached already?
         newPair := splitPair[0] + "/" + other
-        newCacheKey := newPair + "-" + cached.exchange
+        newCacheKey := newPair + "-" + cached.Exchange
         _, found := tickerCache.Get(newCacheKey)
         if found {
             // Already cached, our work here is done
             continue
         }
 
-        price := cached.ticker.lastPrice * rate
-        tickerCache.Set(newCacheKey, CacheableTicker{
-            exchange: cached.exchange,
-            pair: newPair,
-            exchRate: rate,
-            lastPrice: price,
-            ticker: nil,
-            errorCount: 0,
-            lastMod: time.Now(),
+        price := cached.LastPrice * rate
+        tickerCache.Set(newCacheKey, data.Ticker{
+            Exchange: cached.Exchange,
+            Pair: newPair,
+            ExchRate: rate,
+            LastPrice: price,
+            ErrorCount: 0,
+            LastMod: time.Now(),
         }, cache.DefaultExpiration)
     }
 }
+*/
 
 func getFiatRate(base string, alt string) (error, float64) {
     var err error
@@ -284,10 +232,23 @@ func getFiatRate(base string, alt string) (error, float64) {
     return err, rate
 }
 
-func (t CacheableTicker) String() string {
-    var rateStr string
-    if (t.exchRate > 0) {
-        rateStr = fmt.Sprintf("; exch. rate = %f", t.exchRate)
+func (ex exchange) getTicker(pair string) (error, data.Ticker) {
+    var ticker data.Ticker
+    err, lastPrice := ex.service.getLastPrice(pair)
+
+    if (err != nil) {
+        return err, ticker
     }
-    return fmt.Sprintf("%s (%s); %f%s", t.pair, t.exchange, t.lastPrice, rateStr)
+    if (lastPrice <= 0) {
+        return errors.New("pair not found"), ticker
+    }
+    ticker = data.Ticker{
+        Exchange: ex.name,
+        Pair: pair,
+        ExchRate: 0,
+        LastPrice: lastPrice,
+        ErrorCount: 0,
+        LastMod: time.Now(),
+    }
+    return err, ticker
 }

@@ -3,6 +3,8 @@ package microservice
 import (
 	"time"
 
+    "github.com/stephenneal/exchain/data"
+
 	"github.com/go-kit/kit/metrics"
 )
 
@@ -12,35 +14,22 @@ type instrumentingMiddleware struct {
 	next           TickerService
 }
 
-func (mw instrumentingMiddleware) RefreshTickers() {
+func (mw instrumentingMiddleware) GetTicker(s string) (err error, ticker []data.Ticker) {
 	defer func(begin time.Time) {
-		lvs := []string{"method", "refreshTickers", "error", "false"}
+		lvs := []string{"method", "getTicker", "error", "false"}
 		mw.requestCount.With(lvs...).Add(1)
 		mw.requestLatency.With(lvs...).Observe(time.Since(begin).Seconds())
 	}(time.Now())
 
-	mw.next.RefreshTickers()
-	return
+	return mw.next.GetTicker(s)
 }
 
-func (mw instrumentingMiddleware) RefreshTicker(s string) {
+func (mw instrumentingMiddleware) GetTickers() (error, []data.Ticker) {
 	defer func(begin time.Time) {
-		lvs := []string{"method", "refreshTicker", "error", "false"}
+		lvs := []string{"method", "getTickers", "error", "false"}
 		mw.requestCount.With(lvs...).Add(1)
 		mw.requestLatency.With(lvs...).Observe(time.Since(begin).Seconds())
 	}(time.Now())
 
-	mw.next.RefreshTicker(s)
-	return
-}
-
-func (mw instrumentingMiddleware) PrintTickers() {
-	defer func(begin time.Time) {
-		lvs := []string{"method", "printTickers", "error", "false"}
-		mw.requestCount.With(lvs...).Add(1)
-		mw.requestLatency.With(lvs...).Observe(time.Since(begin).Seconds())
-	}(time.Now())
-
-	mw.next.PrintTickers()
-	return
+	return mw.next.GetTickers()
 }

@@ -5,6 +5,8 @@ import (
 	"os"
 	"time"
 
+    "github.com/patrickmn/go-cache"
+
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
@@ -15,6 +17,7 @@ import (
 
 func Start(listen *string) {
 	logger := log.NewLogfmtLogger(os.Stderr)
+    caching := cache.New(1*time.Minute, 10*time.Minute)
 
 	fieldKeys := []string{"method", "error"}
 	requestCount := kitprometheus.NewCounterFrom(stdprometheus.CounterOpts{
@@ -32,28 +35,23 @@ func Start(listen *string) {
 
 	var tickerSvc TickerService
 	tickerSvc = tickerService{}
-	ticker := time.NewTicker(time.Millisecond * 30000)
-    go func() {
-       for range ticker.C {
-			tickerSvc.RefreshTickers()
-       }
-    }()
+	tickerSvc = cachingMiddleware{caching, tickerSvc}
 	tickerSvc = loggingMiddleware{logger, tickerSvc}
 	tickerSvc = instrumentingMiddleware{requestCount, requestLatency, tickerSvc}
 
-	refreshTickerHandler := httptransport.NewServer(
-		makeRefreshTickerEndpoint(tickerSvc),
-		decodeRefreshTickerRequest,
-		encodeResponse,
+	getTickerHandler := httptransport.NewServer(
+		makeGetTickerEndpoint(tickerSvc),
+		decodeTickerRequest,
+		httptransport.EncodeJSONResponse,
 	)
-	printTickersHandler := httptransport.NewServer(
-		makePrintTickersEndpoint(tickerSvc),
+	getTickersHandler := httptransport.NewServer(
+		makeGetTickersEndpoint(tickerSvc),
 		decodeEmptyRequest,
-		encodeResponse,
+		httptransport.EncodeJSONResponse,
 	)
 
-	http.Handle("/refreshTicker", refreshTickerHandler)
-	http.Handle("/printTickers", printTickersHandler)
+	http.Handle("/getTicker", getTickerHandler)
+	http.Handle("/getTickers", getTickersHandler)
 	http.Handle("/metrics", promhttp.Handler())
 	logger.Log("msg", "HTTP", "addr", *listen)
 	logger.Log("err", http.ListenAndServe(*listen, nil))

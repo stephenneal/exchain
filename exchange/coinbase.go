@@ -14,14 +14,13 @@ type coinbaseTicker struct {
     } `json:"data"`
 }
 
-func (s coinbaseService) getTicker(pair string) (error, SimpleTicker) {
+func (s coinbaseService) getLastPrice(pair string) (error, float64) {
     var custom coinbaseTicker
     urlP := strings.Replace(pair, "/", "-", -1)
     err := GetJson("https://api.coinbase.com/v2/prices/" + urlP + "/spot", &custom)
 
-    var r SimpleTicker
-    if (err == nil) {
-        r = SimpleTicker { custom.Data.Last }
+    if (err != nil) {
+        return err, -1
     }
-    return err, r
+    return err, custom.Data.Last
 }

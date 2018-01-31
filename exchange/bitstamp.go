@@ -30,16 +30,15 @@ type tradingPair []struct {
     Description     string `json:"description"`
 }
 
-func (s bitstampService) getTicker(pair string) (error, SimpleTicker) {
+func (s bitstampService) getLastPrice(pair string) (error, float64) {
     var custom bitstampTicker
     urlP := strings.ToLower(strings.Replace(pair, "/", "", -1))
     err := GetJson("https://www.bitstamp.net/api/v2/ticker/" + urlP, &custom)
 
-    var r SimpleTicker
-    if (err == nil) {
-        r = SimpleTicker { custom.Last }
+    if (err != nil) {
+        return err, -1
     }
-    return err, r
+    return err, custom.Last
 }
 
 // FIXME add this to the Exchange API

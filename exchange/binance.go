@@ -11,14 +11,13 @@ type binanceTicker struct {
     Last      float64 `json:"price,string"`
 }
 
-func (s binanceService) getTicker(pair string) (error, SimpleTicker) {
+func (s binanceService) getLastPrice(pair string) (error, float64) {
     var custom binanceTicker
     urlP := strings.Replace(pair, "/", "", -1)
     err := GetJson("https://api.binance.com/api/v3/ticker/price?symbol=" + urlP, &custom)
 
-    var r SimpleTicker
-    if (err == nil) {
-    	r = SimpleTicker { custom.Last }
+    if (err != nil) {
+    	return err, -1
     }
-    return err, r
+    return err, custom.Last
 }

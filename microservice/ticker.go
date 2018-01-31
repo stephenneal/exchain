@@ -1,37 +1,24 @@
 package microservice
 
 import (
-    "fmt"
-    "os"
-
+    "github.com/stephenneal/exchain/data"
     "github.com/stephenneal/exchain/exchange"
-
-    "github.com/go-kit/kit/log"
 )
 
 // TickerService provides operations to get ticker info.
 type TickerService interface {
-    RefreshTickers()
-	RefreshTicker(pair string)
-	PrintTickers()
+    GetTicker(pair string) (error, []data.Ticker)
+    GetTickers() (error, []data.Ticker) 
 }
 
 type tickerService struct{}
 
-func (tickerService) RefreshTickers() {
-    exchange.RefreshTickers()
+func (tickerService) GetTicker(pair string) (error, []data.Ticker) {
+    return exchange.GetTicker(pair)
 }
 
-func (tickerService) RefreshTicker(pair string) {
-	exchange.RefreshTicker(pair)
-}
-
-func (tickerService) PrintTickers() {
-    logger := log.NewLogfmtLogger(os.Stderr)
-    for k, v := range exchange.GetTickers() {
-    	logger.Log("pair", k, "tickers", fmt.Sprintf("%v", v))
-    }
-	//exchange.PrintTickers()
+func (tickerService) GetTickers() (error, []data.Ticker) {
+    return exchange.GetTickers()
 }
 
 // ServiceMiddleware is a chainable behavior modifier for this service.

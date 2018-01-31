@@ -3,6 +3,8 @@ package microservice
 import (
 	"time"
 
+    "github.com/stephenneal/exchain/data"
+
 	"github.com/go-kit/kit/log"
 )
 
@@ -11,39 +13,25 @@ type loggingMiddleware struct {
 	next   TickerService
 }
 
-func (mw loggingMiddleware) RefreshTickers() {
+func (mw loggingMiddleware) GetTicker(s string) (err error, ticker []data.Ticker) {
 	defer func(begin time.Time) {
 		_ = mw.logger.Log(
-			"method", "refreshTickers",
-			"took", time.Since(begin),
-		)
-	}(time.Now())
-
-	mw.next.RefreshTickers()
-	return
-}
-
-func (mw loggingMiddleware) RefreshTicker(s string) {
-	defer func(begin time.Time) {
-		_ = mw.logger.Log(
-			"method", "refreshTicker",
+			"method", "getTicker",
 			"input", s,
 			"took", time.Since(begin),
 		)
 	}(time.Now())
 
-	mw.next.RefreshTicker(s)
-	return
+	return mw.next.GetTicker(s)
 }
 
-func (mw loggingMiddleware) PrintTickers() {
+func (mw loggingMiddleware) GetTickers() (error, []data.Ticker) {
 	defer func(begin time.Time) {
 		_ = mw.logger.Log(
-			"method", "printTickers",
+			"method", "getTickers",
 			"took", time.Since(begin),
 		)
 	}(time.Now())
 
-	mw.next.PrintTickers()
-	return
+	return mw.next.GetTickers()
 }
