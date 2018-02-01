@@ -3,6 +3,7 @@ package microservice
 import (
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
     "github.com/patrickmn/go-cache"
@@ -15,7 +16,7 @@ import (
 	httptransport "github.com/go-kit/kit/transport/http"
 )
 
-func Start(listen *string) {
+func Start(port string) {
 	logger := log.NewLogfmtLogger(os.Stderr)
     caching := cache.New(1*time.Minute, 10*time.Minute)
 
@@ -50,9 +51,12 @@ func Start(listen *string) {
 		httptransport.EncodeJSONResponse,
 	)
 
-	http.Handle("/getTicker", getTickerHandler)
-	http.Handle("/getTickers", getTickersHandler)
+	http.Handle("/pub/v1/getTicker", getTickerHandler)
+	http.Handle("/pub/v1/getTickers", getTickersHandler)
 	http.Handle("/metrics", promhttp.Handler())
-	logger.Log("msg", "HTTP", "addr", *listen)
-	logger.Log("err", http.ListenAndServe(*listen, nil))
+	logger.Log("msg", "HTTP", "addr", port)
+	if !strings.HasPrefix(":", port) {
+		port = ":" + port
+	}
+	logger.Log("err", http.ListenAndServe(port, nil))
 }

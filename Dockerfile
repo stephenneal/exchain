@@ -1,28 +1,21 @@
-FROM golang:1.9.2-alpine3.6 AS build
+FROM heroku/heroku:16-build as build
 
-# Install tools required to build the project
-# We will need to run `docker build --no-cache .` to update those dependencies
-RUN apk add --no-cache git
-RUN go get github.com/golang/dep/cmd/dep
+COPY . /app
+WORKDIR /app
 
-# Gopkg.toml and Gopkg.lock lists project dependencies
-# These layers will only be re-built when Gopkg files are updated
-COPY Gopkg.lock Gopkg.toml /go/src/github.com/stephenneal/exchain/
-WORKDIR /go/src/github.com/stephenneal/exchain
-# Install library dependencies
-RUN dep ensure -vendor-only
+# Setup buildpack
+RUN mkdir -p /tmp/buildpack/heroku/go /tmp/build_cache /tmp/env
+RUN curl https://codon-buildpacks.s3.amazonaws.com/buildpacks/heroku/go.tgz | tar xz -C /tmp/buildpack/heroku/go
 
-# Copy all project and build it
-# This layer will be rebuilt when ever a file has changed in the project directory
-COPY . .
-# Build a binary will all deps to use in scratch
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-s" -a -installsuffix cgo -o /bin/project
+#Execute Buildpack
+RUN STACK=heroku-16 /tmp/buildpack/heroku/go/bin/compile /app /tmp/build_cache /tmp/env
 
-# This results in a single layer image
-FROM scratch
-COPY --from=build /bin/project /bin/project
-ENTRYPOINT ["/bin/project"]
+# Prepare final, minimal image
+FROM heroku/heroku:16
 
-EXPOSE 8080
-
-#CMD ["--help"]
+COPY --from=build /app /app
+ENV HOME /app
+WORKDIR /app
+RUN useradd -m heroku
+USER heroku
+CMD /app/bin/exchain
