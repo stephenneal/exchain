@@ -1,4 +1,4 @@
-package microservice
+package exchangems
 
 import (
 	"time"
@@ -8,28 +8,37 @@ import (
 	"github.com/go-kit/kit/metrics"
 )
 
-type instrumentingMiddleware struct {
+type instrumentingService struct {
 	requestCount   metrics.Counter
 	requestLatency metrics.Histogram
-	next           TickerService
+	Service
 }
 
-func (mw instrumentingMiddleware) GetTicker(s string) (err error, ticker []exchange.Ticker) {
+// NewInstrumentingService returns an instance of an instrumenting Service.
+func NewInstrumentingService(counter metrics.Counter, latency metrics.Histogram, s Service) Service {
+	return &instrumentingService{
+		requestCount:   counter,
+		requestLatency: latency,
+		Service:        s,
+	}
+}
+
+func (mw instrumentingService) GetTicker(s string) (err error, ticker []exchange.Ticker) {
 	defer func(begin time.Time) {
 		lvs := []string{"method", "getTicker", "error", "false"}
 		mw.requestCount.With(lvs...).Add(1)
 		mw.requestLatency.With(lvs...).Observe(time.Since(begin).Seconds())
 	}(time.Now())
 
-	return mw.next.GetTicker(s)
+	return mw.Service.GetTicker(s)
 }
 
-func (mw instrumentingMiddleware) GetTickers() (error, []exchange.Ticker) {
+func (mw instrumentingService) GetTickers() (error, []exchange.Ticker) {
 	defer func(begin time.Time) {
 		lvs := []string{"method", "getTickers", "error", "false"}
 		mw.requestCount.With(lvs...).Add(1)
 		mw.requestLatency.With(lvs...).Observe(time.Since(begin).Seconds())
 	}(time.Now())
 
-	return mw.next.GetTickers()
+	return mw.Service.GetTickers()
 }

@@ -1,4 +1,4 @@
-package microservice
+package exchangems
 
 import (
     "github.com/stephenneal/exchain/exchange"
@@ -10,18 +10,23 @@ const (
 	allKey = "ALL_PAIRS"
 )
 
-type cachingMiddleware struct {
+type cachingService struct {
 	caching *cache.Cache
-	next  TickerService
+	Service
 }
 
-func (mw cachingMiddleware) GetTicker(pair string) (error, []exchange.Ticker) {
+// NewLoggingService returns a new instance of a logging Service.
+func NewCachingService(caching *cache.Cache, s Service) Service {
+	return &cachingService{caching, s}
+}
+
+func (mw cachingService) GetTicker(pair string) (error, []exchange.Ticker) {
 	cached, found := mw.caching.Get(pair)
 	if (found) {
 		return nil, cached.([]exchange.Ticker)
 	}
 
-	err, resp := mw.next.GetTicker(pair)
+	err, resp := mw.Service.GetTicker(pair)
 	if (err != nil) {
 		return err, resp
 	}
@@ -29,16 +34,16 @@ func (mw cachingMiddleware) GetTicker(pair string) (error, []exchange.Ticker) {
 	return err, resp
 }
 
-func (mw cachingMiddleware) GetTickers() (error, []exchange.Ticker) {
+func (mw cachingService) GetTickers() (error, []exchange.Ticker) {
 	cached, found := mw.caching.Get(allKey)
 	if (found) {
 		return nil, cached.([]exchange.Ticker)
 	}
 
-	err, resp := mw.next.GetTickers()
+	err, resp := mw.Service.GetTickers()
 	if (err != nil) {
 		return err, resp
 	}
-	mw.caching.Set("pair", resp, cache.DefaultExpiration)
+	mw.caching.Set(allKey, resp, cache.DefaultExpiration)
 	return err, resp
 }
