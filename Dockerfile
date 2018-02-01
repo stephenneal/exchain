@@ -7,8 +7,8 @@ RUN go get github.com/golang/dep/cmd/dep
 
 # Gopkg.toml and Gopkg.lock lists project dependencies
 # These layers will only be re-built when Gopkg files are updated
-COPY Gopkg.lock Gopkg.toml /go/src/github.com/stephenneal/go-start/
-WORKDIR /go/src/github.com/stephenneal/go-start
+COPY Gopkg.lock Gopkg.toml /go/src/github.com/stephenneal/exchain/
+WORKDIR /go/src/github.com/stephenneal/exchain
 # Install library dependencies
 RUN dep ensure -vendor-only
 
@@ -22,4 +22,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-s" -a -installsuffix cgo -o /bi
 FROM scratch
 COPY --from=build /bin/project /bin/project
 ENTRYPOINT ["/bin/project"]
+
+EXPOSE 8080
+
 #CMD ["--help"]
