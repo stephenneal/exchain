@@ -53,7 +53,7 @@ var (
     indepReserve = Exchange {"Independent Reserve", indepReserveService{}}
 
     exByPairs = map[string][]Exchange {
-        BCH_AUD : { btcm, coinbase, indepReserve },
+        BCH_AUD : { btcm, indepReserve },
         BCH_USD : { bitstamp, coinbase, indepReserve },
         BTC_AUD : { btcm, coinbase },
         BTC_USD : { bitstamp, coinbase },
