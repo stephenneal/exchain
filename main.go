@@ -16,14 +16,13 @@ import (
     stdprometheus "github.com/prometheus/client_golang/prometheus"
     "github.com/prometheus/client_golang/prometheus/promhttp"
 
-    "github.com/go-kit/kit/log"
+    kitlog "github.com/go-kit/kit/log"
     kitprometheus "github.com/go-kit/kit/metrics/prometheus"
 )
 
 func main() {
-    var logger log.Logger
-    logger = log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
-    logger = log.With(logger, "ts", log.DefaultTimestampUTC)
+    logger := kitlog.NewLogfmtLogger(kitlog.NewSyncWriter(os.Stderr))
+    logger = kitlog.With(logger, "ts", kitlog.DefaultTimestampUTC)
 
     httpAddr := os.Getenv("PORT")
     logger.Log("$PORT", httpAddr)
@@ -42,7 +41,7 @@ func main() {
     var es exchangems.Service
     es = exchangems.NewService()
     es = exchangems.NewCachingService(caching, es)
-    es = exchangems.NewLoggingService(log.With(logger, "component", "exchange"), es)
+    es = exchangems.NewLoggingService(kitlog.With(logger, "component", "exchange"), es)
     es = exchangems.NewInstrumentingService(
         kitprometheus.NewCounterFrom(stdprometheus.CounterOpts{
             Namespace: "api",
@@ -59,11 +58,11 @@ func main() {
         es,
     )
 
-    httpLogger := log.With(logger, "component", "http")
+    httpLogger := kitlog.With(logger, "component", "http")
 
     mux := http.NewServeMux()
 
-    mux.Handle("/pub/ex/v1", exchangems.MakeHandler(es, httpLogger))
+    mux.Handle("/pub/ex/v1/", exchangems.MakeHandler(es, httpLogger))
 
     http.Handle("/", accessControl(mux))
     http.Handle("/metrics", promhttp.Handler())

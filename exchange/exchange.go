@@ -30,17 +30,18 @@ const (
     TOK_ETH  = "ETH"
     TOK_USDT = "USDT"
 
-    BCH_AUD  = TOK_BCH + "/" + FIAT_AUD
-    BCH_USD  = TOK_BCH + "/" + FIAT_USD
+    sep = "-"
+    BCH_AUD  = TOK_BCH + sep + FIAT_AUD
+    BCH_USD  = TOK_BCH + sep + FIAT_USD
 
-    BTC_AUD  = TOK_BTC + "/" + FIAT_AUD
-    BTC_USD  = TOK_BTC + "/" + FIAT_USD
-    BTC_USDT = TOK_BTC + "/" + TOK_USDT
+    BTC_AUD  = TOK_BTC + sep + FIAT_AUD
+    BTC_USD  = TOK_BTC + sep + FIAT_USD
+    BTC_USDT = TOK_BTC + sep + TOK_USDT
 
-    ETH_AUD  = TOK_ETH + "/" + FIAT_AUD
-    ETH_BTC  = TOK_ETH + "/" + TOK_BTC
-    ETH_USD  = TOK_ETH + "/" + FIAT_USD
-    ETH_USDT = TOK_ETH + "/" + TOK_USDT
+    ETH_AUD  = TOK_ETH + sep + FIAT_AUD
+    ETH_BTC  = TOK_ETH + sep + TOK_BTC
+    ETH_USD  = TOK_ETH + sep + FIAT_USD
+    ETH_USDT = TOK_ETH + sep + TOK_USDT
 )
 
 var (
@@ -101,7 +102,7 @@ func (ex Exchange) GetTicker(pair string) (error, []Ticker) {
     var tickers []Ticker
     if exArr, ok := exByPairs[pair]; ok {
         for _, ex := range exArr {
-            splitPair := strings.Split(pair, "/")
+            splitPair := strings.Split(pair, sep)
             tp := TradingPair { splitPair[0], splitPair[1] }
             err, lastPrice := ex.service.getLastPrice(tp)
 
