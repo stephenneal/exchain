@@ -1,15 +1,5 @@
-# go-start
+# exchain
 A simple project to provide a consistent API for getting data from crypto exchanges.
 
-## Build and deploy with Docker
-```
-docker build -t exchain .
-docker run -rm exchain
-```
-
-If your bash/console environment is not configured correctly try running the command output by:
-```
-docker-machine env default
-```
-
-
+## Build and deploy
+The default Dockerfile can be use to deploy to Heroku (local or remote). An alternate is provided to deploy to a local docker instance.
