@@ -55,5 +55,5 @@ type tickerRequest struct {
 }
 
 type tickersResponse struct {
-  	Tickers []exchange.Ticker
+  	Tickers []exchange.Ticker `json:"tickers"`
 }
