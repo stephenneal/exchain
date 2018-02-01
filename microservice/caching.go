@@ -1,7 +1,7 @@
 package microservice
 
 import (
-    "github.com/stephenneal/exchain/data"
+    "github.com/stephenneal/exchain/exchange"
 
     "github.com/patrickmn/go-cache"
 )
@@ -15,10 +15,10 @@ type cachingMiddleware struct {
 	next  TickerService
 }
 
-func (mw cachingMiddleware) GetTicker(pair string) (error, []data.Ticker) {
+func (mw cachingMiddleware) GetTicker(pair string) (error, []exchange.Ticker) {
 	cached, found := mw.caching.Get(pair)
 	if (found) {
-		return nil, cached.([]data.Ticker)
+		return nil, cached.([]exchange.Ticker)
 	}
 
 	err, resp := mw.next.GetTicker(pair)
@@ -29,10 +29,10 @@ func (mw cachingMiddleware) GetTicker(pair string) (error, []data.Ticker) {
 	return err, resp
 }
 
-func (mw cachingMiddleware) GetTickers() (error, []data.Ticker) {
+func (mw cachingMiddleware) GetTickers() (error, []exchange.Ticker) {
 	cached, found := mw.caching.Get(allKey)
 	if (found) {
-		return nil, cached.([]data.Ticker)
+		return nil, cached.([]exchange.Ticker)
 	}
 
 	err, resp := mw.next.GetTickers()

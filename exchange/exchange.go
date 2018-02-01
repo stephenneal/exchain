@@ -1,35 +1,37 @@
 package exchange
 
 import (
-    "errors"
     "fmt"
     "os"
     "sort"
-    //"strings"
+    "strings"
     "time"
-
-    "github.com/stephenneal/exchain/data"
 
     "github.com/go-kit/kit/log"
     "github.com/go-kit/kit/log/level"
     "github.com/patrickmn/go-cache"
 )
 
-type ExchangeService interface {
-    getLastPrice(string) (error, float64)
+type exchangeService interface {
+    getLastPrice(TradingPair) (error, float64)
 }
 
-type exchange struct {
+type Exchange struct {
     name string
-    service ExchangeService
+    service exchangeService
 }
 
 const (
     FIAT_AUD = "AUD"
     FIAT_USD = "USD"
+
+    TOK_BCH  = "BCH"
     TOK_BTC  = "BTC"
     TOK_ETH  = "ETH"
     TOK_USDT = "USDT"
+
+    BCH_AUD  = TOK_BCH + "/" + FIAT_AUD
+    BCH_USD  = TOK_BCH + "/" + FIAT_USD
 
     BTC_AUD  = TOK_BTC + "/" + FIAT_AUD
     BTC_USD  = TOK_BTC + "/" + FIAT_USD
@@ -44,42 +46,45 @@ const (
 var (
     logger = level.NewFilter(log.NewLogfmtLogger(os.Stderr), level.AllowInfo())
 
-    binance  = exchange {"Binance", binanceService{}}
-    bitstamp = exchange {"Bitstamp", bitstampService{}}
-    btcm     = exchange {"BTCMarkets", btcmService{}}
-    coinbase = exchange {"Coinbase", coinbaseService{}}
+    binance  = Exchange {"Binance", binanceService{}}
+    bitstamp = Exchange {"Bitstamp", bitstampService{}}
+    btcm     = Exchange {"BTCMarkets", btcmService{}}
+    coinbase = Exchange {"Coinbase", coinbaseService{}}
+    indepReserve = Exchange {"Independent Reserve", indepReserveService{}}
 
-    exByPairs = map[string][]exchange {
+    exByPairs = map[string][]Exchange {
+        BCH_AUD : { btcm, coinbase, indepReserve },
+        BCH_USD : { bitstamp, coinbase, indepReserve },
         BTC_AUD : { btcm, coinbase },
         BTC_USD : { bitstamp, coinbase },
         BTC_USDT: { binance },
-        ETH_AUD : { btcm, coinbase },
+        ETH_AUD : { btcm, coinbase, indepReserve },
         ETH_BTC : { binance },
-        ETH_USD : { bitstamp, coinbase },
+        ETH_USD : { bitstamp, coinbase, indepReserve },
         ETH_USDT: { binance },
     }
-    allPairs = make([]string, len(exByPairs))
+    allPairs = make([]string, 0, len(exByPairs))
 
     fiatRates = cache.New(5*time.Minute, 10*time.Minute)
 )
 
-func AllPairs() []string {
+func (ex Exchange) AllPairs() []string {
     i := 0
-    if (allPairs[i] == "") {
+    if (len(allPairs) == 0) {
         for k := range exByPairs {
-            allPairs[i] = k
+            allPairs = append(allPairs, k)
             i++
         }
+        sort.Strings(allPairs)
     }
-    sort.Strings(allPairs)
     return allPairs
 }
 
-func GetTickers() (err error, ticker []data.Ticker) {
+func (ex Exchange) GetTickers() (error, []Ticker) {
     // TODO call exchanges concurrently
-    var tickers []data.Ticker
-    for _, pair := range AllPairs() {
-        err, t := GetTicker(pair)
+    var tickers []Ticker
+    for _, pair := range ex.AllPairs() {
+        err, t := ex.GetTicker(pair)
         if (err != nil) {
             level.Error(logger).Log("method", "GetTickers", "pair", pair, "err", err)
             continue
@@ -90,16 +95,31 @@ func GetTickers() (err error, ticker []data.Ticker) {
     return nil, tickers
 }
 
-func GetTicker(pair string) (err error, ticker []data.Ticker) {
+func (ex Exchange) GetTicker(pair string) (error, []Ticker) {
     // TODO call exchanges concurrently
-    var tickers []data.Ticker
+    // TODO deal with timeouts (exchange unavailable)...
+    var tickers []Ticker
     if exArr, ok := exByPairs[pair]; ok {
         for _, ex := range exArr {
-            err, t := ex.getTicker(pair)
-            if (err != nil) {
-                level.Error(logger).Log("method", "GetTicker", "pair", pair, "exchange", ex.name, "err", err)
-                continue
+            splitPair := strings.Split(pair, "/")
+            tp := TradingPair { splitPair[0], splitPair[1] }
+            err, lastPrice := ex.service.getLastPrice(tp)
+
+            t := Ticker{
+                Exchange: ex.name,
+                Pair: tp,
+                LastMod: time.Now(),
             }
+
+            if (err != nil) {
+                t.Err = err.Error()
+            } else if (lastPrice <= 0) {
+                t.Err = "not found on this exchange"
+            } else {
+                t.ExchRate = 0
+                t.LastPrice = lastPrice
+            }
+            level.Debug(logger).Log("method", "GetTicker", "ticker", t)
             tickers = append(tickers, t)
         }
     }
@@ -126,7 +146,7 @@ func printTickers() {
 
     var prevPair string
     for _, k := range keys {
-        cached := items[k].Object.(data.Ticker)
+        cached := items[k].Object.(Ticker)
         // Print a new line in between pairs
         var customStr string
         if (prevPair != cached.Pair) {
@@ -167,7 +187,7 @@ func derive(base string, alt string) {
     }
 
     for _, v := range tickerCache.Items() {
-        cached := v.Object.(data.Ticker)
+        cached := v.Object.(Ticker)
         splitPair := strings.Split(cached.Pair, "/")
         fiat := splitPair[1]
 
@@ -194,7 +214,7 @@ func derive(base string, alt string) {
         }
 
         price := cached.LastPrice * rate
-        tickerCache.Set(newCacheKey, data.Ticker{
+        tickerCache.Set(newCacheKey, Ticker{
             Exchange: cached.Exchange,
             Pair: newPair,
             ExchRate: rate,
@@ -230,25 +250,4 @@ func getFiatRate(base string, alt string) (error, float64) {
         rate = -1
     }
     return err, rate
-}
-
-func (ex exchange) getTicker(pair string) (error, data.Ticker) {
-    var ticker data.Ticker
-    err, lastPrice := ex.service.getLastPrice(pair)
-
-    if (err != nil) {
-        return err, ticker
-    }
-    if (lastPrice <= 0) {
-        return errors.New("pair not found"), ticker
-    }
-    ticker = data.Ticker{
-        Exchange: ex.name,
-        Pair: pair,
-        ExchRate: 0,
-        LastPrice: lastPrice,
-        ErrorCount: 0,
-        LastMod: time.Now(),
-    }
-    return err, ticker
 }

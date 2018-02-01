@@ -12,9 +12,9 @@ type btcmTicker struct {
 	Volume24H  float64 `json:"volume24h"`
 }
 
-func (s btcmService) getLastPrice(pair string) (error, float64) {
+func (s btcmService) getLastPrice(pair TradingPair) (error, float64) {
     var custom btcmTicker
-    err := GetJson("https://api.btcmarkets.net/market/" + pair + "/tick", &custom)
+    err := GetJson("https://api.btcmarkets.net/market/" + pair.Pair("/") + "/tick", &custom)
 
     if (err != nil) {
     	return err, -1

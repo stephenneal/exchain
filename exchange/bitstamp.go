@@ -30,9 +30,9 @@ type tradingPair []struct {
     Description     string `json:"description"`
 }
 
-func (s bitstampService) getLastPrice(pair string) (error, float64) {
+func (s bitstampService) getLastPrice(pair TradingPair) (error, float64) {
     var custom bitstampTicker
-    urlP := strings.ToLower(strings.Replace(pair, "/", "", -1))
+    urlP := strings.ToLower(pair.Pair(""))
     err := GetJson("https://www.bitstamp.net/api/v2/ticker/" + urlP, &custom)
 
     if (err != nil) {

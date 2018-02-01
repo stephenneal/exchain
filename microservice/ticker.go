@@ -1,24 +1,25 @@
 package microservice
 
 import (
-    "github.com/stephenneal/exchain/data"
     "github.com/stephenneal/exchain/exchange"
 )
 
 // TickerService provides operations to get ticker info.
 type TickerService interface {
-    GetTicker(pair string) (error, []data.Ticker)
-    GetTickers() (error, []data.Ticker) 
+    GetTicker(pair string) (error, []exchange.Ticker)
+    GetTickers() (error, []exchange.Ticker) 
 }
 
 type tickerService struct{}
 
-func (tickerService) GetTicker(pair string) (error, []data.Ticker) {
-    return exchange.GetTicker(pair)
+var ex = exchange.Exchange{}
+
+func (tickerService) GetTicker(pair string) (error, []exchange.Ticker) {
+    return ex.GetTicker(pair)
 }
 
-func (tickerService) GetTickers() (error, []data.Ticker) {
-    return exchange.GetTickers()
+func (tickerService) GetTickers() (error, []exchange.Ticker) {
+    return ex.GetTickers()
 }
 
 // ServiceMiddleware is a chainable behavior modifier for this service.

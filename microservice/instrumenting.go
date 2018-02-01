@@ -3,7 +3,7 @@ package microservice
 import (
 	"time"
 
-    "github.com/stephenneal/exchain/data"
+    "github.com/stephenneal/exchain/exchange"
 
 	"github.com/go-kit/kit/metrics"
 )
@@ -14,7 +14,7 @@ type instrumentingMiddleware struct {
 	next           TickerService
 }
 
-func (mw instrumentingMiddleware) GetTicker(s string) (err error, ticker []data.Ticker) {
+func (mw instrumentingMiddleware) GetTicker(s string) (err error, ticker []exchange.Ticker) {
 	defer func(begin time.Time) {
 		lvs := []string{"method", "getTicker", "error", "false"}
 		mw.requestCount.With(lvs...).Add(1)
@@ -24,7 +24,7 @@ func (mw instrumentingMiddleware) GetTicker(s string) (err error, ticker []data.
 	return mw.next.GetTicker(s)
 }
 
-func (mw instrumentingMiddleware) GetTickers() (error, []data.Ticker) {
+func (mw instrumentingMiddleware) GetTickers() (error, []exchange.Ticker) {
 	defer func(begin time.Time) {
 		lvs := []string{"method", "getTickers", "error", "false"}
 		mw.requestCount.With(lvs...).Add(1)

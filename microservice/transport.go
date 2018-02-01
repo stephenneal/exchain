@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-    "github.com/stephenneal/exchain/data"
+    "github.com/stephenneal/exchain/exchange"
 
 	"github.com/go-kit/kit/endpoint"
 )
@@ -55,5 +55,5 @@ type tickerRequest struct {
 }
 
 type tickersResponse struct {
-  	Tickers []data.Ticker
+  	Tickers []exchange.Ticker
 }

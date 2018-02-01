@@ -1,9 +1,5 @@
 package exchange
 
-import (
-    "strings"
-)
-
 type binanceService struct{}
 
 type binanceTicker struct {
@@ -11,9 +7,9 @@ type binanceTicker struct {
     Last      float64 `json:"price,string"`
 }
 
-func (s binanceService) getLastPrice(pair string) (error, float64) {
+func (s binanceService) getLastPrice(pair TradingPair) (error, float64) {
     var custom binanceTicker
-    urlP := strings.Replace(pair, "/", "", -1)
+    urlP := pair.Pair("")
     err := GetJson("https://api.binance.com/api/v3/ticker/price?symbol=" + urlP, &custom)
 
     if (err != nil) {

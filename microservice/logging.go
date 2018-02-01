@@ -3,7 +3,7 @@ package microservice
 import (
 	"time"
 
-    "github.com/stephenneal/exchain/data"
+    "github.com/stephenneal/exchain/exchange"
 
 	"github.com/go-kit/kit/log"
 )
@@ -13,7 +13,7 @@ type loggingMiddleware struct {
 	next   TickerService
 }
 
-func (mw loggingMiddleware) GetTicker(s string) (err error, ticker []data.Ticker) {
+func (mw loggingMiddleware) GetTicker(s string) (err error, ticker []exchange.Ticker) {
 	defer func(begin time.Time) {
 		_ = mw.logger.Log(
 			"method", "getTicker",
@@ -25,7 +25,7 @@ func (mw loggingMiddleware) GetTicker(s string) (err error, ticker []data.Ticker
 	return mw.next.GetTicker(s)
 }
 
-func (mw loggingMiddleware) GetTickers() (error, []data.Ticker) {
+func (mw loggingMiddleware) GetTickers() (error, []exchange.Ticker) {
 	defer func(begin time.Time) {
 		_ = mw.logger.Log(
 			"method", "getTickers",
