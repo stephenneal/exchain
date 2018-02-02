@@ -81,19 +81,37 @@ func (ex Exchange) AllPairs() []string {
     return allPairs
 }
 
-func (ex Exchange) GetTickers() (error, []Ticker) {
+func (ex Exchange) GetTickers() (error, []TickerSummary) {
     // TODO call exchanges concurrently
-    var tickers []Ticker
+    var ts []TickerSummary
     for _, pair := range ex.AllPairs() {
         err, t := ex.GetTicker(pair)
         if (err != nil) {
             level.Error(logger).Log("method", "GetTickers", "pair", pair, "err", err)
             continue
         }
-        tickers = append(tickers, t...)
+        if len(t) <= 0 {
+            continue
+        }
+        high := t[0].LastPrice
+        low := t[0].LastPrice
+        for _, e := range t {
+            if e.LastPrice > high {
+                high = e.LastPrice
+            } else if e.LastPrice < low {
+                low = e.LastPrice
+            }
+        }
+        s := TickerSummary {
+            Pair: pair,
+            HighestPrice: high,
+            LowestPrice: low,
+            Tickers: t,
+        }
+        ts = append(ts, s)
     }
-    level.Debug(logger).Log("method", "GetTickers", "tickers", fmt.Sprintf("%v", tickers))
-    return nil, tickers
+    level.Debug(logger).Log("method", "GetTickers", "summary", fmt.Sprintf("%v", ts))
+    return nil, ts
 }
 
 func (ex Exchange) GetTicker(pair string) (error, []Ticker) {

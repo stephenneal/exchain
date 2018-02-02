@@ -30,7 +30,7 @@ func (mw loggingService) GetTicker(pair string) (err error, ticker []exchange.Ti
 	return mw.Service.GetTicker(pair)
 }
 
-func (mw loggingService) GetTickers() (error, []exchange.Ticker) {
+func (mw loggingService) GetTickers() (error, []exchange.TickerSummary) {
 	defer func(begin time.Time) {
 		_ = mw.logger.Log(
 			"method", "getTickers",

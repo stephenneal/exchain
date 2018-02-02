@@ -33,7 +33,7 @@ func (mw instrumentingService) GetTicker(s string) (err error, ticker []exchange
 	return mw.Service.GetTicker(s)
 }
 
-func (mw instrumentingService) GetTickers() (error, []exchange.Ticker) {
+func (mw instrumentingService) GetTickers() (error, []exchange.TickerSummary) {
 	defer func(begin time.Time) {
 		lvs := []string{"method", "getTickers", "error", "false"}
 		mw.requestCount.With(lvs...).Add(1)

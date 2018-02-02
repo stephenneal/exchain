@@ -23,6 +23,11 @@ type tickersResponse struct {
 	Err   error  `json:"error,omitempty"`
 }
 
+type tickerSummaryResponse struct {
+  	Tickers []exchange.TickerSummary `json:"tickers"`
+	Err   error  `json:"error,omitempty"`
+}
+
 func (r tickersResponse) error() error { return r.Err }
 
 func makeGetTickerEndpoint(svc Service) endpoint.Endpoint {
@@ -36,6 +41,6 @@ func makeGetTickerEndpoint(svc Service) endpoint.Endpoint {
 func makeGetTickersEndpoint(svc Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		err, tickers := svc.GetTickers()
-		return tickersResponse{Tickers: tickers, Err: err}, nil
+		return tickerSummaryResponse{Tickers: tickers, Err: err}, nil
 	}
 }

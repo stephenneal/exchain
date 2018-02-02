@@ -34,10 +34,10 @@ func (mw cachingService) GetTicker(pair string) (error, []exchange.Ticker) {
 	return err, resp
 }
 
-func (mw cachingService) GetTickers() (error, []exchange.Ticker) {
+func (mw cachingService) GetTickers() (error, []exchange.TickerSummary) {
 	cached, found := mw.caching.Get(allKey)
 	if (found) {
-		return nil, cached.([]exchange.Ticker)
+		return nil, cached.([]exchange.TickerSummary)
 	}
 
 	err, resp := mw.Service.GetTickers()

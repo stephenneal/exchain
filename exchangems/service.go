@@ -7,7 +7,7 @@ import (
 // Service is an interface that provides exchange operations.
 type Service interface {
     GetTicker(pair string) (error, []exchange.Ticker)
-    GetTickers() (error, []exchange.Ticker) 
+    GetTickers() (error, []exchange.TickerSummary) 
 }
 
 type service struct{}
@@ -18,7 +18,7 @@ func (service) GetTicker(pair string) (error, []exchange.Ticker) {
     return ex.GetTicker(pair)
 }
 
-func (service) GetTickers() (error, []exchange.Ticker) {
+func (service) GetTickers() (error, []exchange.TickerSummary) {
     return ex.GetTickers()
 }
 

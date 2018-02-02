@@ -19,6 +19,15 @@ type Ticker struct {
     LastMod     time.Time   `json:"lastMod,stamp"`
 }
 
+type TickerSummary struct {
+    Pair         string `json:"pair, string"`
+    HighestPrice float64     `json:"highPrice,string"`
+    LowestPrice  float64     `json:"lowPrice,string"`
+    Err          string      `json:"error"`
+    LastMod      time.Time   `json:"lastMod,stamp"`
+    Tickers      []Ticker    `json:"tickers"`
+}
+
 func (t Ticker) String() string {
     if (len(t.Err) > 0) {
         return fmt.Sprintf("%s (%s); %s", t.Err)
@@ -37,3 +46,11 @@ func (t TradingPair) Pair(separator string) string {
 func (t TradingPair) String() string {
     return fmt.Sprintf("%s/%s", t.One, t.Two)
 }
+
+func (t TickerSummary) String() string {
+    if (len(t.Err) > 0) {
+        return fmt.Sprintf("%s (%s); %s", t.Err)
+    }
+    return fmt.Sprintf("%s; lowest=%f, highest=%f, %s", t.Pair, t.LowestPrice, t.HighestPrice)
+}
+
