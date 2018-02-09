@@ -1,5 +1,23 @@
 package exchange
 
+type exchangeService interface {
+    getLastPrice(base string, quot string) (error, float64)
+    getPairs() (error, map[string]struct{})
+}
+
+const (
+    AUD = "AUD"
+    USD = "USD"
+
+    BCH  = "BCH"
+    BTC  = "BTC"
+    ETH  = "ETH"
+    USDT = "USDT"
+)
+
+/*
+package exchange
+
 import (
     "fmt"
     "os"
@@ -14,11 +32,7 @@ import (
 
 type exchangeService interface {
     getLastPrice(TradingPair) (error, float64)
-}
-
-type Exchange struct {
-    name string
-    service exchangeService
+    getPairs() (error, map[string]struct])
 }
 
 const (
@@ -47,28 +61,18 @@ const (
 var (
     logger = level.NewFilter(log.NewLogfmtLogger(os.Stderr), level.AllowInfo())
 
-    binance  = Exchange {"Binance", binanceService{}}
-    bitstamp = Exchange {"Bitstamp", bitstampService{}}
-    btcm     = Exchange {"BTCMarkets", btcmService{}}
-    coinbase = Exchange {"Coinbase", coinbaseService{}}
-    indepReserve = Exchange {"Independent Reserve", indepReserveService{}}
-
-    exByPairs = map[string][]Exchange {
-        BCH_AUD : { btcm, indepReserve },
-        BCH_USD : { bitstamp, coinbase, indepReserve },
-        BTC_AUD : { btcm, coinbase },
-        BTC_USD : { bitstamp, coinbase },
-        BTC_USDT: { binance },
-        ETH_AUD : { btcm, coinbase, indepReserve },
-        ETH_BTC : { binance },
-        ETH_USD : { bitstamp, coinbase, indepReserve },
-        ETH_USDT: { binance },
+    exchanges = map[string]exchangeService {
+        "Binance"    : binanceService{},
+        "Bitstamp"   : bitstampService{},
+        "BTCMarkets" : btcmService{},
+        "Coinbase"   : coinbaseService{},
+        "Independent Reserve" : indepReserveService{},
     }
-    allPairs = make([]string, 0, len(exByPairs))
 
-    fiatRates = cache.New(5*time.Minute, 10*time.Minute)
+    lCache = cache.New(5*time.Minute, 10*time.Minute)
 )
-
+*/
+/*
 func (ex Exchange) AllPairs() []string {
     i := 0
     if (len(allPairs) == 0) {
@@ -80,12 +84,13 @@ func (ex Exchange) AllPairs() []string {
     }
     return allPairs
 }
-
-func (ex Exchange) GetTickers() (error, []TickerSummary) {
+*/
+/*
+func GetTickers() (error, []TickerSummary) {
     // TODO call exchanges concurrently
     var ts []TickerSummary
-    for _, pair := range ex.AllPairs() {
-        err, t := ex.GetTicker(pair)
+    for name, service := range ex.AllPairs() {
+        err, t := GetTicker(pair)
         if (err != nil) {
             level.Error(logger).Log("method", "GetTickers", "pair", pair, "err", err)
             continue
@@ -114,10 +119,11 @@ func (ex Exchange) GetTickers() (error, []TickerSummary) {
     return nil, ts
 }
 
-func (ex Exchange) GetTicker(pair string) (error, []Ticker) {
+func GetTicker(pair string) (error, []Ticker) {
     // TODO call exchanges concurrently
     // TODO deal with timeouts (exchange unavailable)...
     var tickers []Ticker
+
     if exArr, ok := exByPairs[pair]; ok {
         for _, ex := range exArr {
             splitPair := strings.Split(pair, sep)
@@ -146,6 +152,12 @@ func (ex Exchange) GetTicker(pair string) (error, []Ticker) {
     return nil, tickers
 }
 
+func getExchanges(pair string) {
+    for name, service := range exchanges {
+        service.getPairs()
+    }
+}
+*/
 /*
 func refreshTickers() {
     for _, p := range GetAllPairs() {
@@ -244,11 +256,12 @@ func derive(base string, alt string) {
     }
 }
 */
-
+/*
 func getFiatRate(base string, alt string) (error, float64) {
     var err error
     var rates Rates
-    e, found := fiatRates.Get(base)
+    key := "fiat_" + base
+    e, found := lCache.Get(key)
     if found {
         rates = e.(Rates)
     } else {
@@ -256,7 +269,7 @@ func getFiatRate(base string, alt string) (error, float64) {
         if err != nil {
             return err, -1
         }
-        fiatRates.Set(base, rates, cache.DefaultExpiration)
+        lCache.Set(key, rates, cache.DefaultExpiration)
     }
     var rate float64
     switch alt {
@@ -270,3 +283,4 @@ func getFiatRate(base string, alt string) (error, float64) {
     }
     return err, rate
 }
+*/

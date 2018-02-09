@@ -6,9 +6,9 @@ import (
     "time"
 )
 
-type indepReserveService struct{}
+type independentReserveService struct{}
 
-type indepReserveTicker struct {
+type indepResTicker struct {
     DayHighestPrice                  float64   `json:"DayHighestPrice"`
     DayLowestPrice                   float64   `json:"DayLowestPrice"`
     DayAvgPrice                      float64   `json:"DayAvgPrice"`
@@ -22,9 +22,26 @@ type indepReserveTicker struct {
     CreatedTimestampUtc              time.Time `json:"CreatedTimestampUtc"`
 }
 
-func (s indepReserveService) getLastPrice(pair TradingPair) (error, float64) {
-    var custom indepReserveTicker
-    urlP := fmt.Sprintf("primaryCurrencyCode=%s&secondaryCurrencyCode=%s", strings.ToLower(pair.One), strings.ToLower(pair.Two))
+var indepResCurr = map[string][]string {
+        AUD: {BCH, BTC, ETH},
+        USD: {BCH, BTC, ETH},
+    }
+
+func (s independentReserveService) getCurrencies() (error, map[string][]string) {
+    return nil, indepResCurr
+}
+
+func (s independentReserveService) getLastPrice(base string, quot string) (error, float64) {
+    var custom indepResTicker
+    // For some reason Independent Reserve uses XBT for Bitcoin (BTC)
+    p1 := base
+    p2 := quot
+    if (base == BTC) {
+        p1 = "XBT"
+    } else if (quot == BTC) {
+        p2 = "XBT"
+    }
+    urlP := fmt.Sprintf("primaryCurrencyCode=%s&secondaryCurrencyCode=%s", strings.ToLower(p1), strings.ToLower(p2))
     err := GetJson("https://api.independentreserve.com/Public/GetMarketSummary?" + urlP, &custom)
 
     if (err != nil) {

@@ -1,6 +1,9 @@
 package exchange
 
-type coinbaseService struct{}
+type coinbaseService struct{
+    Alt  []string
+    Base []string
+}
 
 type coinbaseTicker struct {
     Data struct {
@@ -10,9 +13,18 @@ type coinbaseTicker struct {
     } `json:"data"`
 }
 
-func (s coinbaseService) getLastPrice(pair TradingPair) (error, float64) {
+var coinbaseCurr = map[string][]string {
+        AUD: { BTC, ETH },
+        USD: { BCH, BTC, ETH },
+    }
+
+func (s coinbaseService) getCurrencies() (error, map[string][]string) {
+    return nil, coinbaseCurr
+}
+
+func (s coinbaseService) getLastPrice(base string, quot string) (error, float64) {
     var custom coinbaseTicker
-    urlP := pair.Pair("-")
+    urlP := base + "-" + quot
     err := GetJson("https://api.coinbase.com/v2/prices/" + urlP + "/spot", &custom)
 
     if (err != nil) {

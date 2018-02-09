@@ -1,8 +1,6 @@
 package exchangems
 
 import (
-    "github.com/stephenneal/exchain/exchange"
-
     "github.com/patrickmn/go-cache"
 )
 
@@ -20,24 +18,25 @@ func NewCachingService(caching *cache.Cache, s Service) Service {
 	return &cachingService{caching, s}
 }
 
-func (mw cachingService) GetTicker(pair string) (error, []exchange.Ticker) {
-	cached, found := mw.caching.Get(pair)
+func (mw cachingService) GetTickers(base string, quot string) (error, []Ticker) {
+	cached, found := mw.caching.Get(base)
 	if (found) {
-		return nil, cached.([]exchange.Ticker)
+		return nil, cached.([]Ticker)
 	}
 
-	err, resp := mw.Service.GetTicker(pair)
+	err, resp := mw.Service.GetTickers(base, quot)
 	if (err != nil) {
 		return err, resp
 	}
-	mw.caching.Set(pair, resp, cache.DefaultExpiration)
+	mw.caching.Set(base, resp, cache.DefaultExpiration)
 	return err, resp
 }
 
-func (mw cachingService) GetTickers() (error, []exchange.TickerSummary) {
+/*
+func (mw cachingService) GetTickers() (error, []TickerSummary) {
 	cached, found := mw.caching.Get(allKey)
 	if (found) {
-		return nil, cached.([]exchange.TickerSummary)
+		return nil, cached.([]TickerSummary)
 	}
 
 	err, resp := mw.Service.GetTickers()
@@ -47,3 +46,4 @@ func (mw cachingService) GetTickers() (error, []exchange.TickerSummary) {
 	mw.caching.Set(allKey, resp, cache.DefaultExpiration)
 	return err, resp
 }
+*/

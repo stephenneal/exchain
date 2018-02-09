@@ -7,11 +7,10 @@ import (
     "os/signal"
     "strings"
     "syscall"
-    "time"
 
     "github.com/stephenneal/exchain/exchangems"
 
-    "github.com/patrickmn/go-cache"
+//    "github.com/patrickmn/go-cache"
 
     stdprometheus "github.com/prometheus/client_golang/prometheus"
     "github.com/prometheus/client_golang/prometheus/promhttp"
@@ -21,8 +20,12 @@ import (
 )
 
 func main() {
-    logger := kitlog.NewLogfmtLogger(kitlog.NewSyncWriter(os.Stderr))
-    logger = kitlog.With(logger, "ts", kitlog.DefaultTimestampUTC)
+    var logger kitlog.Logger
+    {
+        logger = kitlog.NewLogfmtLogger(os.Stderr)
+        logger = kitlog.With(logger, "ts", kitlog.DefaultTimestampUTC)
+        logger = kitlog.With(logger, "caller", kitlog.DefaultCaller)
+    }
 
     httpAddr := os.Getenv("PORT")
     logger.Log("$PORT", httpAddr)
@@ -34,48 +37,50 @@ func main() {
     }
 
 
-    caching := cache.New(1*time.Minute, 10*time.Minute)
+    //caching := cache.New(1*time.Minute, 10*time.Minute)
 
     fieldKeys := []string{"method", "error"}
 
-    var es exchangems.Service
-    es = exchangems.NewService()
-    es = exchangems.NewCachingService(caching, es)
-    es = exchangems.NewLoggingService(kitlog.With(logger, "component", "exchange"), es)
-    es = exchangems.NewInstrumentingService(
-        kitprometheus.NewCounterFrom(stdprometheus.CounterOpts{
-            Namespace: "api",
-            Subsystem: "exchange_service",
-            Name:      "request_count",
-            Help:      "Number of requests received.",
-        }, fieldKeys),
-        kitprometheus.NewSummaryFrom(stdprometheus.SummaryOpts{
-            Namespace: "api",
-            Subsystem: "exchange_service",
-            Name:      "request_latency_microseconds",
-            Help:      "Total duration of requests in microseconds.",
-        }, fieldKeys),
-        es,
-    )
+    var s exchangems.Service
+    {
+        s = exchangems.NewService()
+        //s = exchangems.NewCachingService(caching, s)
+        s = exchangems.LoggingMiddleware(logger)(s)
+        s = exchangems.InstrumentingMiddleware(
+            kitprometheus.NewCounterFrom(stdprometheus.CounterOpts{
+                Namespace: "api",
+                Subsystem: "exchange_service",
+                Name:      "request_count",
+                Help:      "Number of requests received.",
+            }, fieldKeys),
+            kitprometheus.NewSummaryFrom(stdprometheus.SummaryOpts{
+                Namespace: "api",
+                Subsystem: "exchange_service",
+                Name:      "request_latency_microseconds",
+                Help:      "Total duration of requests in microseconds.",
+            }, fieldKeys))(s)
+    }
 
-    httpLogger := kitlog.With(logger, "component", "http")
+    var h http.Handler
+    {
+        h = exchangems.MakeHTTPHandler(s, kitlog.With(logger, "component", "HTTP"))
+    }
 
     mux := http.NewServeMux()
-
-    mux.Handle("/pub/ex/v1/", exchangems.MakeHandler(es, httpLogger))
+    mux.Handle("/pub/v1/", h)
 
     http.Handle("/", accessControl(mux))
     http.Handle("/metrics", promhttp.Handler())
 
     errs := make(chan error, 2)
     go func() {
-        logger.Log("transport", "http", "address", httpAddr, "msg", "listening")
-        errs <- http.ListenAndServe(httpAddr, nil)
+        c := make(chan os.Signal)
+        signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+        errs <- fmt.Errorf("%s", <-c)
     }()
     go func() {
-        c := make(chan os.Signal)
-        signal.Notify(c, syscall.SIGINT)
-        errs <- fmt.Errorf("%s", <-c)
+        logger.Log("transport", "http", "address", httpAddr, "msg", "listening")
+        errs <- http.ListenAndServe(httpAddr, mux)
     }()
 
     logger.Log("terminated", <-errs)

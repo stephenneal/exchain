@@ -3,7 +3,7 @@ package exchange
 import (
     "strings"
 
-    "github.com/romana/rlog"
+    //"github.com/romana/rlog"
 )
 
 type bitstampService struct{}
@@ -30,21 +30,13 @@ type tradingPair []struct {
     Description     string `json:"description"`
 }
 
-func (s bitstampService) getLastPrice(pair TradingPair) (error, float64) {
-    var custom bitstampTicker
-    urlP := strings.ToLower(pair.Pair(""))
-    err := GetJson("https://www.bitstamp.net/api/v2/ticker/" + urlP, &custom)
-
-    if (err != nil) {
-        return err, -1
+var bitstampCurr = map[string][]string {
+        USD: {BCH, BTC, ETH},
     }
-    return err, custom.Last
-}
 
-// FIXME add this to the Exchange API
-func GetTradingPairs() {
+func (s bitstampService) getCurrencies() (error, map[string][]string) {
+    /* TODO get from Bitstamp and translate
     var response tradingPair
-
     if err := GetJson("https://www.bitstamp.net/api/v2/trading-pairs-info/", &response); err != nil {
         rlog.Error(err)
     } else {
@@ -52,4 +44,17 @@ func GetTradingPairs() {
             rlog.Info(elem.Name)
         }
     }
+    */
+    return nil, bitstampCurr
+}
+
+func (s bitstampService) getLastPrice(base string, quot string) (error, float64) {
+    var custom bitstampTicker
+    urlP := strings.ToLower(base + quot)
+    err := GetJson("https://www.bitstamp.net/api/v2/ticker/" + urlP, &custom)
+
+    if (err != nil) {
+        return err, -1
+    }
+    return err, custom.Last
 }

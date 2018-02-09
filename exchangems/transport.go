@@ -3,7 +3,7 @@ package exchangems
 import (
 	"context"
 	"encoding/json"
-	"errors"
+	//"errors"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -12,32 +12,35 @@ import (
 	kithttp "github.com/go-kit/kit/transport/http"
 )
 
-var errBadRoute = errors.New("bad route")
+//var errBadRoute = errors.New("bad route")
 
 // MakeHandler returns a handler for the booking service.
-func MakeHandler(es Service, logger kitlog.Logger) http.Handler {
+func MakeHTTPHandler(s Service, logger kitlog.Logger) http.Handler {
+	r := mux.NewRouter()
+	e := MakeServerEndpoints(s)
+
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorLogger(logger),
 		kithttp.ServerErrorEncoder(encodeError),
 	}
 
-    getTickerHandler := kithttp.NewServer(
-        makeGetTickerEndpoint(es),
+    r.Methods("GET").Path("/pub/v1/tickers/{base}").Handler(kithttp.NewServer(
+        e.GetTickersEndpoint,
         decodeTickerRequest,
         kithttp.EncodeJSONResponse,
         opts...,
-    )
+    ))
+    /*
     getTickersHandler := kithttp.NewServer(
         makeGetTickersEndpoint(es),
         decodeEmptyRequest,
         kithttp.EncodeJSONResponse,
         opts...,
     )
+    */
 
-	r := mux.NewRouter()
-
-    r.Handle("/pub/ex/v1/getTicker/{pair}", getTickerHandler).Methods("GET")
-    r.Handle("/pub/ex/v1/getTickers", getTickersHandler).Methods("GET")
+    //r.Handle("/pub/ex/v1/getTicker/{pair}", getTickerHandler).Methods("GET")
+    //r.Handle("/pub/ex/v1/getTickers", getTickersHandler).Methods("GET")
 
 	return r
 }
@@ -49,11 +52,9 @@ func decodeEmptyRequest(_ context.Context, r *http.Request) (interface{}, error)
 
 func decodeTickerRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	vars := mux.Vars(r)
-	pair, ok := vars["pair"]
-	if !ok {
-		return nil, errBadRoute
-	}
-	return tickerRequest{Pair: pair}, nil
+	base, _ := vars["base"]
+    quot, _ := vars["quot"]
+	return tickerRequest{ Base: base, Quot: quot }, nil
     /*
 	var request tickerRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
