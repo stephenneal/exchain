@@ -22,12 +22,13 @@ type indepResTicker struct {
     CreatedTimestampUtc              time.Time `json:"CreatedTimestampUtc"`
 }
 
+// Pairs supported by the exchange: quote -> base for easier maintainence.
 var indepResCurr = map[string][]string {
-        AUD: {BCH, BTC, ETH},
-        USD: {BCH, BTC, ETH},
-    }
+    AUD: {BCH, BTC, ETH},
+    USD: {BCH, BTC, ETH},
+}
 
-func (s independentReserveService) getCurrencies() (error, map[string][]string) {
+func (s independentReserveService) getPairs() (error, map[string][]string) {
     return nil, indepResCurr
 }
 

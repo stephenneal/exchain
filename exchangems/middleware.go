@@ -44,7 +44,7 @@ type loggingMiddleware struct {
 
 func (mw instrumentingMiddleware) GetTickers(base string, quot string) (error, []Ticker) {
 	defer func(begin time.Time) {
-		lvs := []string{"method", "getTickers", "error", "false"}
+		lvs := []string{"method", "tickers", "error", "false"}
 		mw.requestCount.With(lvs...).Add(1)
 		mw.requestLatency.With(lvs...).Observe(time.Since(begin).Seconds())
 	}(time.Now())

@@ -13,12 +13,13 @@ type coinbaseTicker struct {
     } `json:"data"`
 }
 
+// Pairs supported by the exchange: quote -> base for easier maintainence.
 var coinbaseCurr = map[string][]string {
-        AUD: { BTC, ETH },
-        USD: { BCH, BTC, ETH },
-    }
+    AUD: { BTC, ETH },
+    USD: { BCH, BTC, ETH },
+}
 
-func (s coinbaseService) getCurrencies() (error, map[string][]string) {
+func (s coinbaseService) getPairs() (error, map[string][]string) {
     return nil, coinbaseCurr
 }
 

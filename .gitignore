@@ -15,3 +15,5 @@
 
 *.bak
 .env
+
+vendor/

@@ -30,11 +30,12 @@ type tradingPair []struct {
     Description     string `json:"description"`
 }
 
+// Pairs supported by the exchange: quote -> base for easier maintainence.
 var bitstampCurr = map[string][]string {
-        USD: {BCH, BTC, ETH},
-    }
+    USD: {BCH, BTC, ETH},
+}
 
-func (s bitstampService) getCurrencies() (error, map[string][]string) {
+func (s bitstampService) getPairs() (error, map[string][]string) {
     /* TODO get from Bitstamp and translate
     var response tradingPair
     if err := GetJson("https://www.bitstamp.net/api/v2/trading-pairs-info/", &response); err != nil {

@@ -40,13 +40,49 @@ type TickerSummary struct {
 
 type service struct{}
 
+type exWrap struct {
+    ex exchange.Exchange
+}
+
+var {
+    exArr = exchange.Exchanges
+}
+
 func NewService() Service {
 	return &service{}
 }
 
 func (s service) GetTickers(base string, quot string) (error, []Ticker) {
-    var t []Ticker
-    return nil, t
+    /*var t []Ticker
+    return nil, t*/
+
+    // TODO call exchanges concurrently
+    // TODO deal with timeouts (exchange unavailable)...
+    var tickers []Ticker
+
+    for _, ex := range exArr {
+        tp := TradingPair { base, quot }
+        err, lastPrice := ex.service.getLastPrice(tp)
+
+        t := Ticker{
+            Exchange: ex.name,
+            Pair: tp,
+            LastMod: time.Now(),
+        }
+
+        if (err != nil) {
+            t.Err = err.Error()
+        } else if (lastPrice <= 0) {
+            t.Err = "not found on this exchange"
+        } else {
+            t.ExchRate = 0
+            t.LastPrice = lastPrice
+        }
+        level.Debug(logger).Log("method", "GetTicker", "ticker", t)
+        tickers = append(tickers, t)
+    }
+    //level.Debug(logger).Log("method", "GetTicker", "pair", pair, "tickers", fmt.Sprintf("%v", tickers))
+    return nil, tickers
 }
 
 /*

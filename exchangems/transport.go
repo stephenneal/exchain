@@ -15,21 +15,24 @@ import (
 //var errBadRoute = errors.New("bad route")
 
 // MakeHandler returns a handler for the booking service.
-func MakeHTTPHandler(s Service, logger kitlog.Logger) http.Handler {
-	r := mux.NewRouter()
+func MakeHandler(s Service, logger kitlog.Logger) http.Handler {
+    opts := []kithttp.ServerOption{
+        kithttp.ServerErrorLogger(logger),
+        kithttp.ServerErrorEncoder(encodeError),
+    }
+
 	e := MakeServerEndpoints(s)
 
-	opts := []kithttp.ServerOption{
-		kithttp.ServerErrorLogger(logger),
-		kithttp.ServerErrorEncoder(encodeError),
-	}
-
-    r.Methods("GET").Path("/pub/v1/tickers/{base}").Handler(kithttp.NewServer(
-        e.GetTickersEndpoint,
+    tickersHandler := kithttp.NewServer(
+        e.TickersEndpoint,
         decodeTickerRequest,
         kithttp.EncodeJSONResponse,
         opts...,
-    ))
+    )
+
+    r := mux.NewRouter()
+
+    r.Handle("/ex/v1/tickers/{base}", tickersHandler).Methods("GET")
     /*
     getTickersHandler := kithttp.NewServer(
         makeGetTickersEndpoint(es),

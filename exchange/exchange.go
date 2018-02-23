@@ -1,8 +1,8 @@
 package exchange
 
-type exchangeService interface {
+type ExchangeService interface {
     getLastPrice(base string, quot string) (error, float64)
-    getPairs() (error, map[string]struct{})
+    getPairs() (error, map[string][]string)
 }
 
 const (
@@ -14,6 +14,17 @@ const (
     ETH  = "ETH"
     USDT = "USDT"
 )
+
+var (
+    Exchanges = map[string]ExchangeService {
+        "Binance"    : binanceService{},
+        "Bitstamp"   : bitstampService{},
+        "BTCMarkets" : btcmService{},
+        "Coinbase"   : coinbaseService{},
+        "Independent Reserve" : indepReserveService{},
+    }
+)
+
 
 /*
 package exchange

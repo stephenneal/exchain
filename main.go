@@ -19,6 +19,10 @@ import (
     kitprometheus "github.com/go-kit/kit/metrics/prometheus"
 )
 
+const (
+    defaultPort              = "80"
+)
+
 func main() {
     var logger kitlog.Logger
     {
@@ -27,15 +31,15 @@ func main() {
         logger = kitlog.With(logger, "caller", kitlog.DefaultCaller)
     }
 
-    httpAddr := os.Getenv("PORT")
-    logger.Log("$PORT", httpAddr)
-    if httpAddr == "" {
-        logger.Log("message", "$PORT must be set")
-        os.Exit(1)
-    } else if !strings.HasPrefix(":", httpAddr) {
+    found, httpAddr := envString("PORT", defaultPort)
+    logPref := ""
+    if !found {
+        logPref = "not set, using fallback: "
+    }
+    if !strings.HasPrefix(":", httpAddr) {
         httpAddr = ":" + httpAddr
     }
-
+    logger.Log("PORT", logPref + httpAddr)
 
     //caching := cache.New(1*time.Minute, 10*time.Minute)
 
@@ -61,26 +65,23 @@ func main() {
             }, fieldKeys))(s)
     }
 
-    var h http.Handler
-    {
-        h = exchangems.MakeHTTPHandler(s, kitlog.With(logger, "component", "HTTP"))
-    }
-
+    httpLogger := kitlog.With(logger, "component", "HTTP")
+    
     mux := http.NewServeMux()
-    mux.Handle("/pub/v1/", h)
+    mux.Handle("/ex/v1/", exchangems.MakeHandler(s, httpLogger))
 
     http.Handle("/", accessControl(mux))
     http.Handle("/metrics", promhttp.Handler())
 
     errs := make(chan error, 2)
     go func() {
+        logger.Log("transport", "http", "address", httpAddr, "msg", "listening")
+        errs <- http.ListenAndServe(httpAddr, nil)
+    }()
+    go func() {
         c := make(chan os.Signal)
         signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
         errs <- fmt.Errorf("%s", <-c)
-    }()
-    go func() {
-        logger.Log("transport", "http", "address", httpAddr, "msg", "listening")
-        errs <- http.ListenAndServe(httpAddr, mux)
     }()
 
     logger.Log("terminated", <-errs)
@@ -98,4 +99,12 @@ func accessControl(h http.Handler) http.Handler {
 
         h.ServeHTTP(w, r)
     })
+}
+
+func envString(env, fallback string) (bool, string) {
+    e := os.Getenv(env)
+    if e == "" {
+        return false, fallback
+    }
+    return true, e
 }

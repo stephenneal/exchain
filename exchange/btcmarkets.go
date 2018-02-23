@@ -12,11 +12,12 @@ type btcmTicker struct {
 	Volume24H  float64 `json:"volume24h"`
 }
 
+// Pairs supported by the exchange: quote -> base for easier maintainence.
 var btcmCurr = map[string][]string {
-        AUD: {BCH, BTC, ETH},
-    }
+    AUD: { BCH, BTC, ETH },
+}
 
-func (s btcmService) getCurrencies() (error, map[string][]string) {
+func (s btcmService) getPairs() (error, map[string][]string) {
     return nil, btcmCurr
 }
 

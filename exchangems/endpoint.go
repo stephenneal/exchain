@@ -7,16 +7,16 @@ import (
 )
 
 type Endpoints struct {
-    GetTickersEndpoint     endpoint.Endpoint
+    TickersEndpoint     endpoint.Endpoint
 }
 
 func MakeServerEndpoints(s Service) Endpoints {
     return Endpoints{
-        GetTickersEndpoint:    MakeGetTickersEndpoint(s),
+        TickersEndpoint:    MakeTickersEndpoint(s),
     }
 }
 
-func MakeGetTickersEndpoint(svc Service) endpoint.Endpoint {
+func MakeTickersEndpoint(svc Service) endpoint.Endpoint {
     return func(ctx context.Context, request interface{}) (interface{}, error) {
         req := request.(tickerRequest)
         err, tickers := svc.GetTickers(req.Base, req.Quot)

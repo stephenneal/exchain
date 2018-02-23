@@ -10,12 +10,13 @@ type binanceTicker struct {
     Last      float64 `json:"price,string"`
 }
 
+// Pairs supported by the exchange: quote -> base for easier maintainence.
 var binanceCurr = map[string][]string {
-        BTC  : []string { ETH },
-        USDT : []string { BTC, ETH },
-    }
+    BTC  : { ETH },
+    USDT : { BTC, ETH },
+}
 
-func (s binanceService) getCurrencies() (error, map[string][]string) {
+func (s binanceService) getPairs() (error, map[string][]string) {
     return nil, binanceCurr
 }
 

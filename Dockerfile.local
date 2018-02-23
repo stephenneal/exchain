@@ -12,6 +12,8 @@ WORKDIR /go/src/github.com/stephenneal/exchain
 # Install library dependencies
 RUN dep ensure -vendor-only
 
+ENV PORT=80
+
 # Copy all project and build it
 # This layer will be rebuilt when ever a file has changed in the project directory
 COPY . .
